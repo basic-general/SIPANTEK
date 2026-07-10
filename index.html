@@ -1,0 +1,1801 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SIPANTEK — Sistem Pelaporan Environmental Terkini</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     SIPANTEK design tokens — instrument-panel aesthetic.
+     Inspired by CEMS readouts, gauge faces, and field data sheets.
+     Palette: deep ink-green panel, teal signal, amber/red alert lamps.
+     Type: IBM Plex Mono for numerals/labels (instrument feel),
+           Inter for body/forms (legibility).
+     ============================================================ */
+  :root {
+    --bg-canvas: #F4F9F6;
+    --bg-panel: #FFFFFF;
+    --bg-panel-raised: #EAF5EF;
+    --bg-well: #EEF6F1;
+    --bg-input: #FFFFFF;
+    --bg-info: #E5F1FE;
+    --bg-success: #E3F6EB;
+    --bg-danger: #FDECEC;
+    --bg-amber: #FEF4E2;
+    --text-primary: #102A22;
+    --text-secondary: #5C7468;
+    --text-tertiary: #92A89C;
+    --text-info: #2563EB;
+    --text-success: #0D9488;
+    --text-danger: #DC4444;
+    --text-amber: #B5760A;
+    --border-hairline: rgba(16,42,34,0.10);
+    --border-strong: rgba(16,42,34,0.22);
+    --border-info: #0D9488;
+    --signal-teal: #0D9488;
+    --signal-amber: #E2A030;
+    --signal-red: #E0524F;
+    --radius-md: 6px;
+    --radius-lg: 10px;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: var(--font-sans); background: var(--bg-canvas);
+    color: var(--text-primary); line-height: 1.5;
+    background-image: radial-gradient(ellipse 900px 420px at 50% -10%, rgba(13,148,136,0.07), transparent);
+    background-repeat: no-repeat;
+  }
+  #app { max-width: 800px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+  h1, h2, h3 { font-weight: 600; margin: 0; font-family: var(--font-mono); letter-spacing: -0.01em; }
+  input, select, textarea, button {
+    font-family: var(--font-sans); font-size: 14px; color: var(--text-primary);
+    background: var(--bg-input); border: 1px solid var(--border-hairline);
+    border-radius: var(--radius-md); padding: 8px 12px; outline: none;
+  }
+  input, select, textarea { width: 100%; }
+  input:focus, select:focus, textarea:focus { border-color: var(--border-info); box-shadow: 0 0 0 3px rgba(13,148,136,0.15); }
+  button { cursor: pointer; font-weight: 500; transition: background 0.15s, transform 0.05s, border-color 0.15s; }
+  button:hover { background: var(--bg-panel-raised); border-color: var(--border-strong); }
+  button:active { transform: scale(0.98); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.primary { background: var(--signal-teal); color: #FFFFFF; border-color: var(--signal-teal); font-weight: 600; }
+  button.primary:hover { background: #0B7C72; border-color: #0B7C72; }
+  button.success-btn { background: var(--text-success); color: #FFFFFF; border-color: var(--text-success); font-weight: 600; }
+  button.success-btn:hover { background: #0B7C72; }
+  button.ghost { border: 1px solid var(--border-hairline); background: var(--bg-input); padding: 5px 8px; color: var(--text-secondary); }
+  button.ghost:hover { background: var(--bg-panel-raised); color: var(--text-primary); border-color: var(--border-strong); }
+  .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 1px solid transparent; background: transparent; color: var(--text-tertiary); border-radius: var(--radius-md); }
+  .icon-btn:hover { background: var(--bg-panel-raised); color: var(--text-primary); border-color: var(--border-hairline); }
+  .icon-svg { display: inline-block; }
+  button .icon-svg, .freq-pill .icon-svg, .alert .icon-svg, .eyebrow .icon-svg { vertical-align: -3px; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .between { display: flex; justify-content: space-between; align-items: center; }
+  .muted { color: var(--text-secondary); }
+  .tiny { font-size: 12px; }
+  .small { font-size: 13px; }
+  .mono { font-family: var(--font-mono); }
+  .card { background: var(--bg-panel); border: 1px solid var(--border-hairline); border-radius: var(--radius-lg); padding: 1rem 1.25rem; }
+  .badge { font-size: 11px; padding: 3px 9px; border-radius: 3px; font-weight: 600; white-space: nowrap; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.04em; border: 1px solid transparent; }
+  .proj-card { position: relative; background: var(--bg-panel); border: 1px solid var(--border-hairline); border-left: 3px solid var(--border-hairline); border-radius: var(--radius-lg); padding: 1rem 1.25rem 1rem 1.1rem; cursor: pointer; transition: border-color 0.15s, transform 0.1s; }
+  .proj-card:hover { border-color: var(--border-strong); border-left-color: var(--signal-teal); transform: translateX(2px); }
+  .template-card { border: 1px solid var(--border-hairline); border-radius: var(--radius-lg); padding: 0.85rem 1rem; cursor: pointer; background: var(--bg-panel); transition: border-color 0.15s; }
+  .template-card.active { border-color: var(--signal-teal); box-shadow: 0 0 0 1px var(--signal-teal); }
+  .template-card i { font-size: 20px; color: var(--text-info); }
+  .template-card .t-title { font-weight: 600; font-size: 14px; margin-top: 8px; font-family: var(--font-mono); }
+  .template-card .t-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .stage-card { background: var(--bg-panel); border: 1px solid var(--border-hairline); border-radius: var(--radius-lg); padding: 0.9rem 1.1rem; }
+  .stage-name-input { font-weight: 600; font-size: 14px; border: none; background: transparent; padding: 2px 0; font-family: var(--font-mono); }
+  .weight-input { width: 54px; text-align: right; padding: 4px 6px; font-family: var(--font-mono); }
+  .stage-date-input { width: 128px; padding: 4px 8px; font-size: 12.5px; }
+  .task-row { display: flex; align-items: center; gap: 8px; }
+  .task-block { padding-bottom: 2px; }
+  .task-block + .task-block { border-top: 1px dashed var(--border-hairline); padding-top: 6px; }
+  .task-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--signal-teal); }
+  .task-name { flex: 1; font-size: 13.5px; }
+  .task-name.done { text-decoration: line-through; color: var(--text-tertiary); }
+  .topbar { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 12px; padding-bottom: 1rem; border-bottom: 1px solid var(--border-hairline); }
+  .filters { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .filters select { width: auto; font-family: var(--font-mono); font-size: 12.5px; }
+  .empty-state { padding: 3rem 1rem; text-align: center; color: var(--text-secondary); background: var(--bg-panel); border: 1px dashed var(--border-hairline); border-radius: var(--radius-lg); font-size: 14px; }
+  .name-input-large { font-size: 20px; font-weight: 600; border: none; padding: 4px 0; background: transparent; width: 100%; font-family: var(--font-mono); }
+  .meta-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; align-items: flex-end; }
+  .meta-row select, .meta-row input { font-size: 13px; }
+  .meta-field { display: flex; flex-direction: column; gap: 2px; width: 150px; flex-shrink: 0; }
+  .meta-field select, .meta-field input { width: 100%; box-sizing: border-box; }
+  .alert { font-size: 12.5px; color: var(--text-danger); margin-top: 10px; font-family: var(--font-mono); }
+  .alert i { font-size: 13px; vertical-align: -2px; margin-right: 4px; }
+  .top-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .logo-strip { display: flex; align-items: center; gap: 10px; padding-right: 12px; margin-right: 4px; border-right: 1px solid var(--border-hairline); }
+  .logo-strip img { height: 26px; width: auto; display: block; }
+  .logo-strip img.logo-perusahaan { height: 24px; }
+  textarea { min-height: 70px; resize: vertical; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; }
+
+  /* Eyebrow / wordmark */
+  .eyebrow { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-info); margin: 0 0 4px; display: flex; align-items: center; gap: 6px; }
+  .eyebrow .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--signal-teal); box-shadow: 0 0 0 3px rgba(13,148,136,0.18); }
+  .wordmark { font-family: var(--font-mono); font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+  .wordmark .sub { display: block; font-family: var(--font-sans); font-weight: 400; font-size: 12.5px; color: var(--text-secondary); letter-spacing: 0; margin-top: 2px; }
+  .tagline { margin: 3px 0 0; font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--text-tertiary); letter-spacing: 0.02em; }
+
+  .tabs { display: flex; gap: 2px; background: var(--bg-well); border: 1px solid var(--border-hairline); border-radius: var(--radius-md); padding: 3px; margin-bottom: 1.5rem; width: fit-content; }
+  .tab-btn { border: 1px solid transparent; background: transparent; padding: 7px 18px; border-radius: 3px; font-size: 12.5px; font-family: var(--font-mono); font-weight: 500; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-secondary); }
+  .tab-btn:hover { background: transparent; color: var(--text-primary); }
+  .tab-btn.active { background: var(--bg-panel-raised); color: var(--signal-teal); border-color: var(--border-hairline); }
+
+  .freq-pill { font-size: 10.5px; padding: 2px 7px; border-radius: 3px; background: var(--bg-well); color: var(--text-secondary); white-space: nowrap; font-family: var(--font-mono); border: 1px solid var(--border-hairline); text-transform: uppercase; letter-spacing: 0.03em; }
+  .cycle-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--bg-amber); border: 1px solid rgba(240,180,41,0.3); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .cycle-banner span { font-size: 12.5px; color: var(--text-amber); font-family: var(--font-mono); }
+  .history-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-top: 1px solid var(--border-hairline); font-size: 13px; font-family: var(--font-mono); }
+  .history-row:first-child { border-top: none; }
+  .mode-toggle { display: flex; gap: 6px; }
+  .mode-card { flex: 1; border: 1px solid var(--border-hairline); border-radius: var(--radius-md); padding: 10px 12px; cursor: pointer; font-size: 13px; background: var(--bg-panel); transition: border-color 0.15s; }
+  .mode-card.active { border-color: var(--signal-teal); box-shadow: 0 0 0 1px var(--signal-teal); }
+  .simple-done-card { display: flex; align-items: center; justify-content: space-between; background: var(--bg-panel); border: 1px solid var(--border-hairline); border-radius: var(--radius-lg); padding: 1.5rem; gap: 16px; }
+
+  .sync-status { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--text-secondary); font-family: var(--font-mono); }
+  .sync-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--text-tertiary); flex-shrink: 0; }
+  .sync-dot.synced { background: var(--signal-teal); box-shadow: 0 0 0 3px rgba(13,148,136,0.18); }
+  .sync-dot.syncing { background: var(--text-info); animation: pulse 1s infinite; }
+  .sync-dot.error { background: var(--signal-red); box-shadow: 0 0 0 3px rgba(224,82,79,0.18); }
+  .sync-dot.offline { background: var(--text-tertiary); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+  .setup-screen { max-width: 480px; margin: 3rem auto; text-align: center; }
+  .setup-screen .card { text-align: left; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(6,10,8,0.7); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+  .modal-box { background: var(--bg-panel); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); padding: 1.5rem; max-width: 460px; width: 100%; max-height: 85vh; overflow-y: auto; }
+  .step-num { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 3px; background: var(--bg-well); border: 1px solid var(--border-hairline); color: var(--text-info); font-size: 11px; font-weight: 600; flex-shrink: 0; font-family: var(--font-mono); }
+
+  /* ---- Signature element: gauge-style level meter (replaces plain progress bar) ---- */
+  .gauge { position: relative; width: 100%; height: 18px; background: var(--bg-well); border: 1px solid var(--border-hairline); border-radius: 2px; overflow: hidden; }
+  .gauge-ticks { position: absolute; inset: 0; display: flex; pointer-events: none; }
+  .gauge-ticks span { flex: 1; border-right: 1px solid rgba(0,0,0,0.35); }
+  .gauge-ticks span:last-child { border-right: none; }
+  .gauge-fill { position: absolute; left: 0; top: 0; bottom: 0; transition: width 0.4s cubic-bezier(.4,0,.2,1); background: repeating-linear-gradient(90deg, var(--g-color) 0 6px, var(--g-color-2) 6px 7px); box-shadow: 0 0 8px var(--g-glow); }
+  .gauge-readout { font-family: var(--font-mono); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .gauge-sm { height: 8px; border-radius: 2px; }
+  .gauge-sm .gauge-fill { background: var(--g-color); box-shadow: none; }
+
+  /* Metric readout cards (dashboard) */
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1px; margin-bottom: 1.5rem; background: var(--border-hairline); border: 1px solid var(--border-hairline); border-radius: var(--radius-lg); overflow: hidden; }
+  .metric-card { background: var(--bg-panel); padding: 0.9rem 1rem; }
+  .metric-card .lbl { font-size: 10.5px; color: var(--text-secondary); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; margin: 0; }
+  .metric-card .val { font-size: 26px; font-weight: 700; margin-top: 6px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--text-primary); line-height: 1; }
+  .metric-card .val.accent { color: var(--signal-teal); }
+  .recap-row { display: flex; align-items:center; gap: 14px; padding: 0.7rem 1rem; }
+  .recap-row.bordered { border-bottom: 1px solid var(--border-hairline); }
+
+  ::placeholder { color: var(--text-tertiary); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--bg-canvas); }
+  ::-webkit-scrollbar-thumb { background: var(--bg-panel-raised); border-radius: 5px; border: 2px solid var(--bg-canvas); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sync-dot.syncing { animation: none; }
+    .gauge-fill, .proj-card { transition: none; }
+  }
+</style>
+
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  var LOGO_PERUSAHAAN = 'data:image/png;base64,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';
+var LOGO_ENVIRO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAYA0lEQVR42t17e5RcZZXvb+/9nVOPfqSTzgMjIo6Iy444w2LkIiINIYAv5DFTDTprBhCF8SKjqAyid6guHOURHWUy4g0gMldF6VqigCgDAmkf4IMwM0AyAhLBgQTy7nR3dZ1zvm/v+8c51SQxkSQEZM1Zq1IrdbpOne/3/fZvPw+w5wehDmYAc/7h6H/svuLo218xfNx5J55+el9xFqjXGf9jj3qdCcDcixfVy0uPNbrmCCstOcq6Fi/89Svrx5wtoPzvRmrycl4G7dG3ajVBsxle/akTDntm9tTPsnJmnASogLRMXE0d4rHo7lmT5QtXfe6W+2EgDIPQgL7cANgzig4M2EitJuu6xhen3RlrFqAsQmCmJGiL22FsXrrwmf7Jn8xpLPqEkQEN6MuRDbvPgJGaYKgZ5g6/872b50zekFo7EMpCpCAtLmkByiGQE3HsUBmzO163qudD93/ltlXF9xWAvRwAkN0GbGSlnbfx7aVfzG59I+2iOfACkJJRjqaAoQ5gAcdKxhqUeuR1U1U9bd9DD3x0w3m3/BoGAsAY/eODwLu5+wyC3dif/WXooQXmg4HBIEDIEAlQFkU3DN0gdBNRlSOpJhT8jDBvbL6/+U8/c8wwExkaUNT++CaxeyZgoLPPOdt987WP/aI1MxxMmQZhSGSEiIAIBiaACRAiMACCgmAwgwoZIldmN1a5dcGqrrOaS5rrBuuDbrQx6l/+DBipCQj2/X2fOF577eBy8NoDkRnG6CWgB0BPvuuokqGCgIoFxDBUQOg1cGxM8K1gcyZO+N1rNi078cJFB402Rv1gfdC9/AFY0TQC4OPs3HLZ0BfMqqLoZqBChJgBJwZHipgIMTFiZlSKd3KCWJiqFEl5yvt0djqwZl9ddnz9hFNGG6MeI5BCG16GANRqggbs4EuOO4R7sKicBquISEkUjhUxG0psiNgQEaHEjJgYEQMxGUTyVxkGFoBYnGUhJDPDrLH5E99ZdNnRn8AQQh5fvbTR4y4CkCtAq8ufFfUEV4IFx0AZQESdhRtiUpTIEBngoHDQXBzNUDaDsKFsmpsHnFSSoFqetGS+X3zsF46/amRohBuNhr6UIDw/5epgNKCDV5y+z1PVxx/miu8X7ywikBTfZga4I4AAGAxAwUSA5SJIoGnXb9PYGxRmRqRxKZZ4fXzz6x97/d8sWbJkS22kJs2hZvijM2AQgwwAk27tqaVe6Y89hZiJHBkcFDFZ7gEIiAlwlOtABMDBEBFDWCDceXdgcRAhCDMcOyqrE00T72cnJ6468Nc/fH/9tPnNoWaovQSR4/P+wJPLnrSRlSMy+ppfftHK6b5O2RwTCwyOCI4JQvmFHHdcIOCKixMDTDT9OTNBinOCPH4gF+DArJr4pJdeHSR951GH/6+7vv6hG9cN1gfdk6NP6h+FAbXC9d1w+K2HSlnfLFkwZhIG4AiIiOAIEBgc577fMcFRHhc4LthQ6IRjQ0SheCki1pwxRnAwCJyzzPtkVvKG9f3P3vGBS993yIvtJndJbNbHm4aoy3MMBJleDMBsENJioQbHmu8+57ogRMX/i/Nk+Wey9QtgVggDJRC61LmQhjA+c+JV62Y984O/+eLQkS8mCPQ852zx4sVdN1dvfzjpae3PntTBWEgK0bOc1mSgQgAJBCYGmxXwGohsKxdP2/yoAVAAZATT/K+CEVLyQZxJqdU13j8x5y+v+8iNd7wYUSP/AfozAPyY732bK+n+UUbqiFgoV3vh3K0JGRyACARhQAQQgoFJiVRBZiCGI4bj3HSEOfccHXOxXB9EAIgCElCmkohnbXe1etb3rf/uWV8eOuHFYMLzmkAatd6jFYABiy1foZBBipsnJpAwhAgRsTIsiBjFMXE5dlwVorKpioXAIMs1AjlYHfAKzyEECDEcCYg9WIglM/WuVV1f2dw8459PPWVvg0B/iP7nf+H8yoOV/3ww7U0PYG/qTJg4TAOQ+3wBWAFONXbMkcTwE5ax6rNsaZuFZku52oeywNopzGdBhWXaJCz/xwCodUzCoEZQI0AJCtXEGXdNVtM57XnvvfrcG27aW+bAO458c/o/FT16kI+y13II5kAkrIgo5FQGQcBwrHCUaXcp5ni89N+8xi6qPN0+eMaa9hv3+U95U2l17wJa697N67Z8VbzfUpoRCUtmkak6AMKaiyAZHKF4UcEOA7ECDK54aFaditeX137rA1e+78S9xYQdXmDtwFoCgJYmh0ZVIU19EDbhjv0D02mvUaLd5YhlnbuDH+s987rFt6ze7nJTAFYDuO0DnzvmCpqfXFTqis9AVSlNk8AWiQEAKcwAU4Eh9xbKAMwgyggQDua1XZmINzm78YNXnXryNf/7xh++UCbskAFzF8w1APCxvskxIExGRY5PzMU7oJxpd6XMvL7rJzPvnHPSdYtvWX320kOieh1cyD6ZgWojNamN1OTaT9316DVn/PRMebb8jmicH+sp94gJBYBNIHCWu1Xm3MPkAVT+W8QBsTGTsibRVGks2nTj3/7TX71ttDHqX0jESDsrfIBgi5a+9d+oj46jdl74kCKic2QwVnMRoavNW0qPV9689OIfPfZ8u1Gvg1cuqFFzqBkuuqg2Z+rA1pXZnPZ7J3UMnImSRqzwUMpdoRkh2HOaEJShSgimqi7j6mTP+nlbXv2OL3/suvv3NHegnQmgwejtS9/2gPXpn3FiKkIsReLjct8eurpKQs+E67/2wZ+euTtU3Ppmz//asRdoT/LZqcpUlGQuuKBCSvAAAhia3wyCAUGBAECNkGlQi41nbOx/et7YfsdceeH/fWRPQNipGxzGcJ7GEIMLxSeynNu5uyJOCOL5FhioYza7cjSHmsEMVLc6f/HMOxeXNvSeWGpV1nfHsTjygaZNIOR2VNwoF0EXw1CyMocUodU38cqn+n57y7lL3j+/OdQMu5tK804MAA1cogaMCxsYMOnU+QggkAmBfZohUjwFgg2sGNitCi8RrEENrd8z6K445/s/7H66/+h4szwSd0cS2DyB4QA4BBDptCYIGEKAsUeFIsmyJCQzpg5c457+zuXXXtDTGG4Y6rte6dqxG7yxJoAhzuy3TGxMsHwXDALKRZAUJgZle0FlrMbRuTu79KPffdht4IWy0d3XU2UH5wMRI8ZWoTYZQAYUYTgAOBLxWeqnZk4e9svWim/YsFF9uL7LBd8dArB2Re4GYx/dF5kQyEhAue9ngzCIYRqVGUY6DwZauWDlHgPRUfLF5/1odemJV7xDNpTv6ao6yZx6lTxqZLZcfyjXISIDEYFAiIxdlqW+Pbv9nr/ofveXGtTQTii/RwAchVEFgDgr3eYndMIxM5E3UN4GKGIAczEBJXcS6IU3ODoFkMs/2RzreeSgk6INXT/tK8fO2HtAwaYAAkDP6YEgZ4QR4KzsWtb2rXlT5534hbd/tDnUDLsSKO0QgEYDWrc633DBD56M23RjV1wiBSmxgS2ATCFgtsyb9CZDf/elI1+3Nyo4nWs0Gku2dD8952ReS8urpS5HkODMgc3AphAjMAyg3E/kpbgAl4m0KQsTM9qfP6Vx4vG7EiPsnCbDDcBA+6ypDGfjrbVcNWGFgjvKbKSZGXW5bsyja+unD5abQ81Qv2fQ7XHXuQNCrSaNT3xrPdb2nCgb+dFyxSTlTAlRfsO0rZrmum0gNkIAhZLK5rljXz/mcycd+HyeYafojI7C6qjzFY2vjr3p+PmPxbGepo4NKuZIiYnADEqtrdWeeH//ivjgww561R2XnTk6AQAjIzUZGFhJo3vQ/1u5cqXVRmry1Q9+b+ytx+57tzoeClXtNu80ry4UiRMRtNBFM0IAYEaEzELWi+6QZW95034LvnlNz3yPZaNA4/kCoU6KtpVNd4KLs65a9CGdnV5lkQe89yVmISEyJohMak+pm208PMIZ1zdentx09fLlGfIghoaXDcqCdXOtVmsq7YZedIKrD191yiKbt/G2NnnnvadQRAjeCF7z6MibIVOGN6DNBPbmqQw3sa70teUfufv9OwuSaNciN0hzCOGsLx9zKvrTf4l7bXZIEpBJEBESCuwohLgci4OAW+lySvCvyabumy8/50e/eyG6UK8PukZj1H946cIP+1cmSyYTCvAmngAPgleDeoKqIRiQkMGrgD0wHnnvtOrKq93fLvv0vy3dEQhUpL/SbDbDyZ9912katPvmi394bb1e50ajob/HhC8cd0A8yzeoKx0qzVQXQgrzbAJWIlJhQ7WsUUwBvoUN6ukXsc38qdPqA9BkRfREz4aPf7w5tTsxU70+KI3GqD/nq39+vc2vnD45mQZTllDkB15zALwBKRQaBKbABAULFJm20ZZn5G3LG3c/gHqdsdW6aOvFvfuqhbcl5ufeee6P39xJiHYWw3/4K+86lPomPyBReryLeT/XpeAI6PSEmQzlEqNadojZIx1ThDF9zLb0XnzBabd/u14HN3Z1ZMZA9WHQRvxVd3rAb+5NZ/CCdgtqYM7NgGBmyIIhJYMqIyghQUBi0DQmlg3uoYMe3/eIb8765gSGC9UsACAANlIbkWuPu+o/Utf6k9c8Omv/r116+7pOV2j7jK7jKgHgsssunLFp1qpDpGv9IYiz1xLRLIh1Cyli2JRIto4Iv8mUH6zEff81XkrWNI7e/fy9A/65S455y1R/uiyN1PlAlJlSMIYpcgBg8JazIiAgIUbmsxCqkfin+F8fvfDHZ3SmXAp65VQ/+7K/3m9V/+8e5F6dMeOp8l83P37nN/5QdlWv13nlgpX0UrSvthfFs7/yjkv9/PYnJ6fS4BWSwWCaMyEzwBugakiJkBrDMsUUaWg7lv5VpdOX/+Nd/68DAnUWecqX3vXOib7WbVYxVDfi53/2zOBbG2gADdgfmucxAw01azywYi0tWDDXVtQGDMONTkqJBc0arZizlvbEC+zIFGrNGg+s2afriVkrfpV2pQcmbVZvgXMRJGSgPG02Q2qERAkJMTjxNlEOpmPlTfs81fPmX37+1icwDHKduH8yav2pVRRZmmbWR4c9ktz1PnwU33i+HDtf0E7ONwCguVd23wx01PCgNBtND2DLGdcvXOegB3rLzOdNuOkiqxU1BLNOvgAksREl0Ml+9D81OfZPRDjZajXm0QWjBgAZpQcFyiAhsmCRtXv0spMXnzx3T3LsvXnUrc61kZoQwUYbo/78+mGzzrpu4RVZOX1LkooFdsVMpuUBjG1N2LzanIfPQBLFYlM+jM+mk/b51MKT0WwGxhC0VhuRVPQNyBgS2Gliqr3ula6y6RqDEYafE7+XZNH1fNEA0KCGNoea4WOfOe5VZ1939P/Z9Lrycj87XODZWM3yRN24wxIYEcw4/8wYZgazgKBFC0qZ0lgw3qOXHHvssV0EACd89rR5G+as/q9SKcyEiZVBBE5DT9mJrQlXNT9y77nbu8G93aKr1+sELOPG8Gh4zv0Szlt6xOFp1Z1ObH9hM3z/pHpkbQ4wEq+GoHkIrMHgjZAaEIwRFEjNkALI1JAY0AKjpYQpDWrmuPosn0MAcOQXj39LOiO5t6yZaWRUAiGCwMRCNRaJNravr/5y099dd90j47WRmqAJNJsvaNiR6vU6LShqCEPbgfrJa044YKoU3pm5yVND3DqceyJMTQlCFgIspQwxByN4zXOCYAYNhkxzEfRFUyU1ICVDqnmYPGWEcWNM+SxQiVB6ln9CAHDYl4463ebg+tJUFtSROA4oA3AQmKPQW1WhzbQcGysfueFjd/5sm/Z5cQysaNrw8O8DMjxcny6WDKxYSxge1QZtF1ugzun1D7yxLZMLNbZ3BecP565QDWRIW0BQC94CK5gQHDwMXg2ZFQAoYGrIjJEBeRxgOQMSAJkqQmBMwmE8WPAg0TKh9GRyCQHAoVcefinPiz/JreCZvYuAfO4HeQsbhFApRcIt8pxixLaEpd3nv+G+q3F1tkc2DmN85bT9UKE/D9HYkUk0cUQQeqPM0MibR9pmBA1BFQiB2ANklmd+ZkXF2Axei0pxAUJn4cEIiQkyBGQKpMGQWgjjItRyEdMWnaIt9JnWxaOX5wxYcsR3tF9O4VYITrzkjc58aMEx5Q8FkGnMxJVqDJ0MkNQeEk8/lxB+5bw9XrJojW1ONlap24MSTWJPoW1R78y+vhDp7IwxN4r5DersII0mX2+SHOCqpR4IkHlDminMLJgSgjGbGQUD1LSgND9XHgcQCr/viyQoGCEYI9NcC9QzPKVogUKiEbWq4LQN6Ob0e7aBLhm7/L5/L2zxHnfr7E//HH18iEtZI/LMXEx4bDX2QmIQqMXqVByEqykiJ3CekBubJQ4YZ0gAiRIbgcyBtYtjVCKniGKCId857xlZZmqUKkBMgYlMSI0QYNCC3opc1DqN03ynCwBA00B0APBmSAMsA7QtXnxUAo8HZC37yUQSfX7dp+65xTqDn0PN4JaNX92XzbFXODUEM3LIL8hFuUgVABs4MAhMyioUAIw7TR0sZUCM2ZWsBEGJ2EAUIMUQsRrBW7DMq5FnJeO85aMghjAoYgMBRdMjQGHGULOiwFEAYUV3qBC9UAQ6HbMoPtegZsoQlCOJxtTKG+0O2sL/8u+N0e9bZ+oNQCcXcK4vfRXU9fsQ4Ka7YgQYoGTTasVmCEy5nyXAwZgNkCLsMm/mQx6QCTyM8uEogEBMROYIBLbOTAgZtGghWo5yoegEhU6na/nOG8wYAQSPkFeBlIoWupkG08AKjZ0wIvCWrG0T/iYZ4y/f/w+j924z7rudx3FbKJ0XIi6RD/BkFGAgsyKpzSmIgpbTaFBnoYBp3soGiKYDMjBseiyGAKO8S2rTWSgsr+kCxSKxDe2pCGep2HmDhyIYw4xAgS0ztRTBVEi0yqJZCTRGT2AyfLt7ovvrdzduXzmdPwzVuNlsKnYQw7hxN7VvEilKgdWI2SNAjKCU34iH5btMWw31TKOgW/k9KiDI/1jNwFZMBFGxeNq2CKWgnD3FKKVa57sFACiaowYEmAULaoEQJBOLiOIQIWzBpB/DMvbuht7fdv3g5itv3lzcJ2O4DlBDm9h58OZSF/bPIkOUUWGK+a4xDFzctPLOamcEs6Iwi84Cf7/oZkbImzpWzIfmv6FFYdqK5eYAoKA2YDDzphoMCAJhJ+K8A7aEgIyXR1Plm8qT3Td96+KbHtumbrBiwEAN3WEVdHsApjTMUhWkUJRU4SVvf4etKqQwgAsWqGCbzAsE+E7zUvOWWb7vOcXJAKN8CoyKbu9z9VctkhcGKcHIEACDkqacAEziOBKGwI8nqab0AE3xD6KkfNv3LrzjAevwrw6uLahRs9bUJu1eqO4SWL83ghTtL+rkkrT1+3OTvqxF7mGaCyJyCmtnMtTyorIVD0wYAKNiz6fHhfPFmlFuARYURBZAgoiJIpMoiWFjNIWMfyVp6dauifj2kU/f+fD2VaKBFQPWaDS0uYdpt1N2M9sIiAr1n5Ypow63p+08d40E0QIMUkjRq+rQv9OmmBZSLmr36JgBmcFMxdSMWDhii0wEBppS6Jiu5hT30lR8B41Xl33r4tse28mibW8kZk6DRcEbEjWAOW87TbcfnqM7Ff04ZzSdZ1tRbCDNhcAKkSO2/EEiKCiQkbEiP80sxFQCgcGUMHTCT3DwD8HTvTJJd5bWV+//+mV3bdi6CjQ4PChH4ShtNPLUeG+moc40155W4Y7i6QnPohPNORlghkiBQAqiIjQFwVihCGCFGTmDsZF5UzIiYnHCRCUTFQAp4Cd8iybkIQr0M81wH43TA82LfrFq2yIIeGWzRgMrBqxBDR3FqB/F6ItSe3Bk2mIQgga0XT6AEIOgZDBTxAUeCoLPVdpC/kCESTAzYssg5CQTidrkxMGRA3uDtgze6zMY1wfh8YB5vt9NVf7ju39/z+Pbe4p8JgFo1ppFttjES3G4EHhdEAK89xbUJZTbvmg+Dp+RmZJBCeQILAQiAYLLh4aYCLEnYFLAwVYHhF8HpA9Tyg9FCa9wGyuPfm9rSm+XSg+saFqjAX0pq8vbYD/744uGJvfFt5PuQBYCSAKEgCqkeODJ4CggDkDkFey1zZBNovxsbPKboNlKZ+Fxt5lX9m2OfnPzlaObd1bN3WrBhpfJk6MEAH0fO/I9yQy8OzD9icWoQoOVjX0JPFa27LcVwmYHWwMNT5az9OmujbZGlszYNIodNDgK0erMGzZrTd0bAxQv1vH/ATGpo/unx2XJAAAAAElFTkSuQmCC';
+var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAfIklEQVR42sWbe3xdVZn3v8/at3OStGkCBYoMMvqOYIvwYisj3locQOTWC3PSUlDEGYMIFcEbt3J6uBUERaigjYj6DtAmZ+gFq3KbgQIy6rSDIIQBvAAviBbaNE1ycvZlrWf+2CdpU9KCDvO++698zid77fXcf+v3PEt4ix4tYwAjFbLR366mNRuIDvMD+WAc69/EGn9x4tVsmVWe6a2vrM9YcNLxOH8rPat+NrM8019fWZ/VvlrY3/f0ahPIf7iMR4N6/XH5OkM7fMcHnFRwb8W+5S0RvBeRKhZAL6DN+oWPOdXZwAdEZH+/ICTDdERXDlfLZfwKZUdvbxOefRrcJg489H309soDU6tyZIUsuTA6O5hovpUOqhXheRUeFtwav5bcP6IM7cGjhBNB/78oQEHowUhHLnh8STDN4HWCdvih2QfAxYqJoD6s5xSXxjc9UMY/8sGZsH59xoK5dxL480AgSW6me83ZzJzp69nrVTqwwxdEVxaazUX5GgJOyVJ9AeGOLOWW4tXx70YUMbKH/2cK0BLeiMXrF4YHeb75qjoWBpGEmiiJxapiC0XCJNY10VXx3A2dBDOemamsX58xf841FKKvECd5uIShT71+Hj1rvzm9c3qwYcpGXQLuojR6JAzk/fWEFPALPoZQSGMdFOH7acJ1TdfUXxzxxL8kLMxf4PK+VLEvd9KUXhJd7nlmox/Ip1DCeFizxKIIxvMJ0pT+DHOOgnQxPbf8/NmfIgpHhPcBjzTNCIPrmT/n4xu7NqZdr0yXSgWHcWdmjswTfBEkznBxTTNRWvxQFgUBjyWLC1/qKeFJBdfID/8zHqAglDBSxdYuLHw4DLjJC+Q9aV2xDiuCkcZ6qmRRk/jJkLsiujpe3FOeGnZUehMWnDwNwwbQAKdm9PuqDs8TnG6G7FBW3vVKT2lq0FHtTeoXFm6NinJGPKyZSC6ggqJY38P3IsEm7tF64j7Xck36+J8bEubNCi+gUsUml4TnhQH3GeU9cU1j53BG8EaFB/UMfjqstcyZ5QryFJMdIKi9Gc8r4NxY5YsYrLWEwZ448w1A+9qKqiAi9sYsUSeCt4PVRAQ/c9i4prEn8oEo9B6KLyic/ufmA3lTlgcoT2xLs+T7QZucxDDgNJfWQpLhIHd9FBcV8JI690RL68d2dk4Puro2psyfcwxhcA9pakG8XXzOYYyQucPoWf14qVTyenqqLr4oeiwK5dA4wSEIigW8yCf3CQV8gRDSrfr9IK4v4jpq5FbZbZV445gpI4AfJ8k/BqHEyWvua84QiNIuwgHAQVEoe+MJaV1xkGHEU/QhBVkSv+YBKfBJRBRkdxty+L6PjRcCj09t+mUgQj2+SB7Bl0NJNPWEyC+IT6akmb6kVp4R5QVNXB9DqBfIO1KiU4Nq/D3KKJX/pgIaySUrLK1/bVwPuZrWbFv0fjI9DZGOKCDCqgX3nwKqtRfSSqnkQTYD6wRVg+zK8VRwDkSOAJh2QLMDcKpPo+KiiChNGcwSvV2FFUEQb5QKg+NikxIqHW+MEfw3FydlmPmgXz7geb99YqBbtqW5BAcckMkF6/shvge4J74wuNZm3pVei5zgxdIH4FexnJ5Mom72oBHVu4k3QRVgb8plU+qtWACjspUQkw7q7QGU5Yr4tyOvdHZOD6bkXkb7xEABpPewjCVTgYr+93JAqeRRrTp2E0cCXFqaGs6a2uuObMDg+OJoiXGsD5bGD3iAXXh8Gy58DmP2wDnd5XdVHb5vyLLncMG7dWpVpYKrXxSebMS8Pbyy/o2RUrykd6q5rNqb7FbCctnQ2ytUq/bPVYBQLguVSg4sTpt7KFY+jPJu0EkgNYTfYuRn3H7nzwBHuWx6eitSquIEtFGOcuXNnOmzT9sz+P47yDKHyC6qj1r8wCNLf87KNUc09qcjwEvLmGov0lFtrHvssRHtTR9G5QjU/jVIhMhmhCdRHmLFqv98I0PKLqyea+yUecchfBllJkEgo3Vh5FVrQd1jWK6he1V3I2kabeSOMevNn/NjwvDjpInbTRXICEOPOP4e3Ws+w8yZPuvXZ6NIjzKjRlk4rxOR8xBzEMaM3RdAmqaI3EumX6Nn1UOjHjHy/i5yQO4us2dPoslbhuedlm8rgyTJxnFZg+8fRmRWsmDecWytdVK5O5Yd8cWmTSNK/ikix+2+CqigKoj8ZNw8VKk4Fh7fBoUfEvgnkllIU4fIeBA4wPePR9zxnDJvGZn3JSqVZMSrXu8BZQyU4elffxRfbiMM9qZeT1AMIrtOlqr5BqLIJ0nuI9x8EgfMSqhUFNBRrS84aV/wnkWkGdXX5wHF4RmDta/ggndRrQ7usNncxKVSG4G9lyCYTj1OAW/X4YSimhutqRgQJ8+RuVPpWb1xtOTCKLoS1gN77VXAuE9gJCTJCkThJMCgzsIuPpRndUOWpUTR31D338VNy6vMnOnzwguO9euVUsmjZ/U2pr37UMJgGtbZ16FQwRIEBmu/R8+qH42+D0KpZJg82TAxWkcQfoA4ThEJdltR0BxT+J5HPX4B4/0GdY499/5FY90xIZC7RLU6DCzO4/+EPcnM36NcQBi+nSTZHYIDkYB6PaVQ7GD+nEfpXnPDmHySg7If4LRjF1jAI0sV8f4PAHvtpY0cYqhWLR2zv0YUzaJez4XfLXhVRxh6pFkvVpbiN9/F7bdvGw2zHcLw9RqcWfaZNc1Q6UgaG2jHtzcQ+Ke9oRJAMeKAhDQ9hOqPftuoJtpw4SImfRbP2w9rt1cDVUfgG9LsV3Svee/oWiMK7Jj7fgLv33AuQ9XbTfXKvxMEhiy7kYHkQtatq4FAuTukt2p3Lonb3bCsBlRYX8lGhV90Q0S1uoUVqz5BmlYIQg/IdosrnAPPLyLmOkDp7ZUdhBlGuA/fZ0ziEnEYD5B1jbKZK3nq1DyHiLshP4452a3wQo4j0vQcVqw6l3Xraiy6IQKFSkeSC6+SyzoSAiX1qIpt0b6vc+WEj5MMbMGYR7wk+Xb/lW2/p3N5wDN3KCtWL2HBHCWMljQqwi4So3ikiSUIZnPKnA+xovoIpZI3Wg2c3IvqGQ1X3F5NrAWj94+6f6nkUalY5s8tEUaHk76h91n8wCdOP0vP6uV0dgYctdzRIXHzhZsPlmLxTFx2OIFrJR744SAspUc9w9SRMzl9JvIPFGOOkLDpyzaKHptwad8ZdJ2ZMutBmN4ZsHJNhTheThj6b+AJYAxYXTxqyVmzcov78kvSNG0Ik7us5xlstoWaPj76/9VqrgT0EtS9EaTNCEOfNFlCz+rllEphQ3jbfGnfF6VY3CBB8RwR73AJzYGgmwB4CjFMyxOgGL3fDdVUszjToS0ZLmulOOnWlks3f5WKZEzvzEGNC84mSR4h8P38MLwrL0gdvn80C+dMp1JxjVCA1HsB+D2eR14O1WEMqPSydu1WQHjwQQM4vOxYwuAQsmw34EktYeATJ3eyck2Fzs6AqT2ODrEtl275ummadB1ZEmqtL1WbWh3oT4wk60dKoSGHqwzQ/iuy+I/4kY+Ih82cDvdnUmy/umXxq510zUihkZTULcTaLRgj6C55OIfvC1YXjYMyn8YYEPLjcf73r/MkPNMb9RbVc3cLnFQdnm9Is9/j/H+gXDb0HSVUJGtZ/Nql0tx2vta2pmij5AcFD9wz29jrd6BCRZwBUXrUoyI1kAclaFLAImJQ62l9myVo/nbLxX/6ENWOhHJPSPfa/4vVz+L5BtmlAjzSVBEzjwUL9m4I7jVU83ReBncQTrW3Ef85cDr1pKl48lHSlF1YXzGN9509nWq1H6b5VDuSlktemyeFtooO9WegfgMvOPEjUO6lIo5yvheDIjz1YIPLc2tgh0wrRrCZgBiC4u2tF2xtg1JGqRzSvbpKktye54NxQ0FQtYThBCRZkCOyTaahmme3o9FRDuA3AOwzkH/bmjPwQw92SXFZgtAjTa+je+3DlMshlVJauHjL2wkK39Ns2KHOsB1wGE3rYFgD0Ah9MQjKklkWwPfMvW64fzNe6DXgKhhjSGuZRBP2t4FdRkUcbSfm5SnkXNL0jxhPUHXjExwWnPsU5bKhtlfasN0LOS+oAuKRZYrjJQCW3Z3QeUITygKyDHQc3jInUX2S5Gn2jhfnyXKWA1Hf6K3iFyeRxToWZxSNprXnBl9p+wWo0CEWUENpznQkD4P+SttWYI1EzYzRvBhfa1szKUw6taXcN4euGSlb2gP+ac1mnH4ezzPjH0jEI7MO3/vfPP3E4aMgxLN/JLOaG0AABjHZq6OuvS34GGG4H85aZBwF5K6vqDuTZXfHTC15VI7MWha/+jlpav+o1vszxOwYNk6CAohZQZek9GAolw0L50w3iCyhVJpMKY9lY9wtmg6Pwxir0ayuYL7VWu6bRPvnUzo7g0YorCEMdhUKDs8H4fTRX5JoC+gQgjQUsJWovX8HC5/R4GN13JIXhB5ZdjPdax+mVA5ZUkoL5S374xWu1njQ7XDGaeQK42k8EHtWcpjdYSz/+fhfY7nYYDgaPzsGEaVzeTBQ2fPnmtYelWhCHsM7UtdZbKUw8W2ZtVdREQedDfQXnENqtyJGxiEdPLIMRE9m9uxJjd8GUdnWILhB6eOHP6wDwsJ5b0fkaLKMnQRpuL7xSJIXaXYXUip5tJ2oiKhn9UYJmydgEx1zSFK1Ek0Udem6bVdO+u0oMhSdA/JhgzERjs/k/z29kb3M18Y9aYn4OtxvJWz67ITFm4+ga0ZKuSegWn0Z675MEJhxkpbgrCUMJ1Pw5gDQ1hYDA0gDDIpu3X6EdacRhoWG8mWn7+e0uXNncetdA0wteXTNSFsWvzbXFCfN1uGtdifXz5NfVlej/rUAtB+Sr6vyaUQLBuvqeOYjdMx9by5Q2R80bT/Sev9GiVq817m1OsT4oiI30aMe00qWctmnZ/UtxPE9BLsIBaeAPQsQurpSRLc1SiEg2xo4oYjj0znTpGanopejvTj9AT1rf0JnZwClbHJZWxD/m2rjcTgGZ6XYajSp/WTg8tZfUCqHVI7M6Djp74jCqSgDBtEBAl8w+hUAeqcZKuLUeBfs4tjraTxgpdh2WPMTW76QZ9NpeZvLZZ1kjVAYA5BGkGFwOAvnzcotwPDoeVSp5Y6X/D1h+A5sZscQHaoO38tdX4MvUC4b6ISKuGH72uVSbN2ftG53IkcU46HpsMUzF4FA276N8DQX5D0KBg3wJ9IMjHcyHXMPpdqR0LkhGKpMut/FA/8sxTZvlFnZIR9oPGgliC6bePnWd1LpSOhc7lNd9yKZ/RzBOABJUIyAdUvyk5sM5fYSgP5G0rsI5xQdY0nFGNcIpU9RrfbTO82na0Y6YXH/3xI2f17r/RbZCSw5Z6XY6pHGNw1V2p+g3B3SdWZKx7wjCfy/I7OCyMsGeAwRxRgf3NL87Y1QLhtn3LkuHtyCH5qxdV4EmyB+ocml7rsATOlUOjsDqmtWECfLiUIf1XQnL7BE0UdYMPdY4PkcAgvA8yyYczqFwkHYnVhj1dz1s6xMz10PNFzfsujZSEVvEfEMzo49JjvniJp8rW37XTTBXUKpx4OnciWKXt0wAKhuNKjeDQhpmhGFH2fB3JPoOjNlS3swXJn8B8niz0hQNIhxNLoWDWzgaX1bJsW2I5sv2fxFKpJB48DUutci4uRnRGEw1nvEYDNF9VZU34e1NCrEcSDfJE11DPWmmlKIAur11XSvuYyZM33ohKrYloltS6XYerAmQxlidnxH8XxF1aHZJzd/dfIA+7ziU6lkzJ/9aaLgcLLMNdDnPcLChW3Y4acxshciirqXyPxDmDp1gFdO9OiakTYv3rzENLeXtbY1BQ22K1sV8Rxe4Gy99qHhq/b8JZ0bArpmpMyduxcFeRjfexdJmo0Sqwp5I11odInBM41mqzJG+CgKSNKfM5j8HevW1enc4NE1I226ZNMJXmHSjzSp5Vh/R+HFWCm2+jrw2lmDV03+TmM/GQtOmoL4v0ZozUu6/Q2FvkMMd9zRB7qCMBCsTQnC/ZH05pw/74Ky+kOX77FEh7beIE2TAlSyUZiMCC4TkMALo+6W81/ek64ZKZ3LA1av3kTMMVj33A7hoI1WhzY6RA1oY932NdFRy2fpL7He8axbV6NzuUfXjHTixX96pwmaf6g2aWD9Hdlp46TY6mtt88Wjwk/5UY4a8W7F99uxLsMPBDHf54fr643sHVxPkg7jGZ84TimEC5k/51y6ulJ6Oww96g1e3vYFN7R1qRQn+Tn2d7bh1Ya0ZiVoOoCJLVU6NwQs78zoXB6watULDLuZpPYhCoWg0dreQYE7MMuqipIhIhSigCRdi9SOplrdQufygK4z07av/rbVBcU14gXtpDHbsb6zeIGRsMlzw1vPH7x8z6soqw9dUKlkdMy9gjD8GEmS4nkBcbyZuuvKE1N+Rt/KtAMhio4iyxzqwPeP46ADn6F65+PQG7DkKdJFxfvDI77wMkF4jARNIVk9yxOLZ8jqmRQnvSMotLw7/WihysYfWzqXB9x+bT9R0+1MahHEzCAMogbIkjEK8DwhDAxOt2DtJaxYdS6//k2cu/BJKee9WPSa29eZqOVwrW+zGM9rMEVWCpN80C3Eg6cNXb7H9ymrzytn5nhjwdyzCYOrSdM8F0WhT5adx51rHqFU8mSUd9+0SZjS/iBh8EHiJMUYDxGwupDuVd10dgZMWa5UJGu6aNN7TaHlZgmKf6vxANgsQ/BQrDS1+a4+eOfQlodPZdlxMeWecJRknT/nXXj+p1F3HMo7EZoa/jsI8iyGtaC3cvvql/JaX/KpHJy0XvBCmy20rZKwZZYObx39Fn7oS9iMprX7JNly9sAVf/UcnRsCnvniyDDWWQTBzdjM4tTlCTX+Ed1rThohZ2S0K1RBKZX2xbc/x/P2I01TjPFz6GnPZsXqm/MOVU9ApSOh/IA/Qd53nhP5qgmb9tD6ALgsA5wU20KXDj2SJQOfjK+c8vucha36o4oAYf7s/VDTjjEK6WusvOsPox6x6IaIZZ9PQLT5wj8eIoUJt0tQOFiH+xNQDy/0JGpBk6GXcO7ywcrErlyOHZR9ypyL8YMrSDPX4CUCsqyX0H6QA9ZuawxOqIxpJVcqjpNPnEYU3ovn7UuaJCD+KM/+7AtfYuPGlFI5pFpJAS2WX9vPk8J5CJ+WsHmSpsOQDCcSNYfq7CYR/erApS0/GCPchz+f0WHsmIZm2flsudFj2blxg6b3mxk8R4y5DJhAVk8JmwPxIzSp/VFhuRnuWzZw9X6bKauhd4lPtZJQmtmCv8e3CILTc/ZaHWEYktlnSeOjqa57cccmqYzbGS6d+L8Iwm4C/73UY0UkIQwjsvRRMv0cPasf326pfMOFizf/lR9EnwI+IUHhb1CHuvxs4rL4YRGWDbraT6nsPbg7erd16dY2V/dnq+giCYrvVZsgXgjq0Cz5tYr+QOoD/zS4dN9Xd94DHfM+iMe3Cfz3ECcxIhFRBGmynuGhU1h9zys7dat20x4/4YQmJoRLETmHwDckKfgeWDsMXMOrA9dx331DoEIPpsGwwHkvFlsm7XEMqgtV3dEmLLbh+ZBlaFJ7EZEHUPdvqvosxn+VJDUYtxe+f5CofBCYJVHLPngGshTNhjeh5qcOuaPGv/8rlSPzZFZ+wKfy0Qy00b1yFyH6BYznYS2EIaRpHfRaXt58GevXZ+O1x2WXkyFTp2qjq3sYJvhHVI9BdT9ECvg+WPs7rL2R/vp3uPvuhHJZYInJEeHI/IoGE95WO1ZVzweOQG0kxYmMTna5Ucag0dMHHe4HY2KQ+1T45lB5wr9u5xhUcjJziaNSUTpPKLItPB/DWXj+vjmSpI7I8xj5CUn6Xap3PTNGnjecESpjqOzQPzvwsMd57lffRfw68ClUPZwLEPZDmMCECZpPki2B3u1kSPGiobd54dCxTvVYcXaqFFojbILW+jcp+owoz6O6OS+JOllF/hrMgSZsbkdMpMngoaJyRvOSgX0k1nsHl058FUSZpspTS4CK8AegRZvB7IO1OVtkZBuqa0j1DnruehaBsQ3asYSN7HKA8tSTj8LpfNCP4flvawxKKGEopNlDOPsZutc8u3MINF02eKgoZ6GcbMKmPaUguG2DoFQx5nbq9tFcmNc/TVcMTpFUZwp6mvjR8dIUonWLpsN/AFkpapcPVFqf3R4CjXBYcPIhGG7B999HkiiBn8+QW/siInfjXDcrV//reEqQ1w1EzZ/9Ufzgm8DBeRxaGp1cSxAEZNk3ybwvUa3aHctOS/m1qZjihaALxC/4apO8teCyHnXJlUOV9ie2h0ZnwJSjhFfeoUz5nbDlFSF+ytHVNXp6nFDuf7+KKYtfOFZtggQFNBkeVuEHWW3ga/E1U54HgdKlIdVKwsyZBabssYzQ/0eSNEHVx/NMHq4ZwK9w9kxWrPn3HeefXl8GO+YejCdPABanimh+ZvU8g7XnsHL1TWPwQOeGpuZ9D7xYxJwnQVNRh7dY/MgD2aouWzRUab1ttEZPK9nRZLmrp3NDABuh68wUoLk8cI545lpsFuEypKldNKn14ezVg713f51qh92p/l+AHywlyyyq2ydPnNYxMo07Vr3YkHs3ZbBj9iKKhRupxylGPIwnZOlpdK+9I7feKUrlyGzCxZs/oGHxOxIW36P1fnA2lmhipDZ5Tuv1eUNL93gyh6VdMiIQp5SOAHcU6g4FpgAO4WXEPEbm7qNn9X/kilge0NfpqIptuXjLhwgL/ywie2sylOCHoUQTcMnQo9QHzhxaOuXJMQhwwZzP4gffHkWAURgQxwvoXtv95svg/Dk/pRAdS5opqf0k1TW3USqFULJUO2zzpVvPFj+8XsQLNBnKQJFooq9Z/JQdGj5m+NrJf6D8ZEjl4IZl5p2IcAFiPtBojG4//krjeJwzwfdjsyvpXvtg7mlPBlQOTlou+cO7CSbeK8bfT5MhC6ISTfDVpgNqh88cumyPFZQf8HllRX4G6Jj7OUL/JjwD9fptdK/9xM7Cj6+AEVj8iTntOH9Dzr+vuXZH4VvKW78hhdbzdLhfUasoSNRs1Ga/t8mWDw9ftf/Lo2559NHNTJ6wDM87A4W8Xyh2DArNt6KAT+Dn3IC138D6X8lzTa7I5q+8Mo3miesFbSdLcg16gSdBE1rfdvHg5e1X7aSEpfhmNi3xDKZMr49OqrypQUlQTjhhT9atey1vPfVAVWzz4q23mObWf9Chvmy0gvuBghnS+rYPDC2d8iSlnpBqR0LpuH0ICmsJgsOJYztKje1+Pj2/clEoGJLkbjKvRLU6OKKElsWbZhK03I9NBbUmH781Tpomea7Wd/XQZe0XUn7AhwdzrDB7duto2/1NDUrurAQQynkrueWSzctkQvs5OtSXwsigkmQSNvta33Ly4BV7rxp1+1JpMoF9AN+fRpzsPNiUNy+cy0fdjBmZEZbX0WFx8hCD6cdZt65O+Uk/V8Krn5OmPW/SWl+DaVJFxUrzJF8H+y4ZvKL9Sko9HtWOXdb/N3NhoiH8Ax4VcU2X9n3ZTGo/Rwf76qPCq2ZSbPU13nb9qPC9FcuiYyM8u3bXwuPwDMAJCKcT+PK6hopIQD1OicKP0OyvABwPnu3o3BAMXj75Zq31dUtTm98Y4RNEPa1tjWVi2xXNl249Na8OD/i7E/7N3BhRmOVQFaPuUTdU+70UWwuNaS0rYbOvw/1PDJr2C/LYu1GpVi1/KnyXKDhiHOHzzkre1r6Y7jX3snLNbdTjb43bZh9RQqFwEvPnXJOPzW6EshovNWdpPPASQdE0wsZKcVKktdrjOPcEqpJ3jHc/Mv/m7gzl46tavOjFt3lh+20SNc/S4X6HHzprkyOGK5M2jCa9jtlnUih8hyRJgWD8YejsYVau/ggzZ/rstZcyMOAzqfgrPO9AskzHmf7MCHyfNJvNytV3jXyr6aJNx3tNk9ZpWrNSaPVcPLg6HN50Rt817+wf2fNbc2tMRCmpN3zV/i8PPvWTo1x98HJpajYa164fI/wp8w7C964nS+34U2QiOJfhWDRmGPLuu2NUz93l5KeqwTqHyC2USvvAUxnlnrB21V4/1vq2FRIVcPG284eWTJjXd807+ymreTPC/3nX5qpiKauh2mGHKhMuZaj2/nDCHlfmM/mN+HX6XYxXfN2lqNFJrsBgs5X0rH58tCZXq5ZSyaN7zb1k2b8QBmacUDA4qwT+ZEy6LIexTzlUxXmF821t+H1DS1qvp6wGzRP2/8y9wXxhoaTewOWtv+i7QPrzCwkdlvlzl9DS9KGcfBQdZ2LEI80cHl/fRegJcF1jcE5e1xZHlCSxNDf9PQvmfIZKJWPWLK9Waflj7Yq2xxpzTu7NWv4vvjgJKFWxebtJpXERQcA9TRw/jOf5RKGP75vtdV1TfB/U/Zw71v6KcnnsLY6Rvye++C+k6W/wvZw+H/GEwDdEoY8YQz25F+UlQJiVJ2jKat7wjPFW3x3e5bPg5L9FXAnkWFTfTeAbnELgQz0+l5Wrb9zxIsT2GeXGb/PnXEOx+BXSdAQep4g8CfJjrPvnUTruLXr8t2ylkeP0yjt/AfyCzs4LGXp1OpmdBXyQODkE4z8AwKxZjvXrx74/khDRe8my+Vi7EZGf4fEgt616jJFb4uVy7lnjsDt/yfNf/84/XDMs1IQAAAAASUVORK5CYII=';
+
+  var APPS_SCRIPT_CODE = `/**
+ * TRACKER PROYEK ENVIRO — BACKEND GOOGLE APPS SCRIPT
+ * ----------------------------------------------------
+ * Cara pasang:
+ * 1. Buat Google Sheet baru (boleh kosong, nama bebas).
+ * 2. Buka menu Extensions > Apps Script.
+ * 3. Hapus semua kode default, paste seluruh isi file ini.
+ * 4. Klik ikon Save (gambar disket).
+ * 5. Klik Deploy > New deployment.
+ *    - Klik ikon gerigi di sebelah "Select type" > pilih "Web app".
+ *    - Description: bebas, misal "Tracker enviro v1".
+ *    - Execute as: Me.
+ *    - Who has access: Anyone with the link.
+ *    - Klik Deploy.
+ * 6. Saat diminta otorisasi, klik Authorize access, pilih akun Google kamu,
+ *    klik Advanced > Go to (nama project) > Allow.
+ * 7. Copy "Web app URL" yang muncul (diakhiri /exec).
+ * 8. Paste URL itu ke file HTML tracker, di bagian SYNC_URL.
+ *
+ * Catatan: setiap kali kamu mengubah kode ini, perlu Deploy > Manage deployments
+ * > klik ikon pensil > Version: New version > Deploy lagi, supaya URL yang sama
+ * memakai kode terbaru.
+ */
+
+var SHEET_NAME = 'data';
+
+function getSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+    sheet.getRange(1, 1, 1, 2).setValues([['key', 'value']]);
+    sheet.getRange(2, 1, 1, 2).setValues([['projects', '[]']]);
+  }
+  return sheet;
+}
+
+function readProjects_() {
+  var sheet = getSheet_();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === 'projects') {
+      try {
+        return JSON.parse(data[i][1] || '[]');
+      } catch (e) {
+        return [];
+      }
+    }
+  }
+  return [];
+}
+
+function writeProjects_(projects) {
+  var sheet = getSheet_();
+  var data = sheet.getDataRange().getValues();
+  var rowIndex = -1;
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === 'projects') {
+      rowIndex = i + 1;
+      break;
+    }
+  }
+  var json = JSON.stringify(projects);
+  if (rowIndex === -1) {
+    sheet.appendRow(['projects', json]);
+  } else {
+    sheet.getRange(rowIndex, 2).setValue(json);
+  }
+  sheet.getRange(1, 4).setValue('terakhir disimpan');
+  sheet.getRange(1, 5).setValue(new Date());
+}
+
+function jsonOut_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doGet(e) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var projects = readProjects_();
+    return jsonOut_({ ok: true, projects: projects });
+  } catch (err) {
+    return jsonOut_({ ok: false, error: String(err) });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function doPost(e) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var body = JSON.parse(e.postData.contents);
+    if (!body || !Array.isArray(body.projects)) {
+      return jsonOut_({ ok: false, error: 'Format data tidak valid' });
+    }
+    writeProjects_(body.projects);
+    return jsonOut_({ ok: true });
+  } catch (err) {
+    return jsonOut_({ ok: false, error: String(err) });
+  } finally {
+    lock.releaseLock();
+  }
+}
+`;
+
+  var STORAGE_KEY = 'enviro-tracker:projects:v2';
+  var OLD_STORAGE_KEY = 'enviro-tracker:projects';
+
+  function safeNormalize(p) {
+    try { return normalizeProject(p); }
+    catch(e) { console.warn('SIPANTEK: gagal normalize proyek, dilewati:', e, p); return null; }
+  }
+  function loadProjects() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed.map(safeNormalize).filter(Boolean);
+      }
+      var old = localStorage.getItem(OLD_STORAGE_KEY);
+      if (old) {
+        var parsedOld = JSON.parse(old);
+        if (Array.isArray(parsedOld)) {
+          return parsedOld.map(function(p){
+            try { return safeNormalize(migrateProject(p)); } catch(e) { return null; }
+          }).filter(Boolean);
+        }
+      }
+      return [];
+    } catch (e) { console.error('SIPANTEK: gagal load proyek:', e); return []; }
+  }
+  function saveProjects(projects) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(projects)); return true; }
+    catch (e) { return false; }
+  }
+  function migrateProject(p) {
+    p.frequency = p.category === 'Rutin' ? 'tahunan' : 'sekali';
+    p.trackMode = 'tahapan';
+    p.history = [];
+    p.cycleStart = p.createdAt || new Date().toISOString();
+    return p;
+  }
+
+  var FREQUENCIES = [
+    { key: 'harian', label: 'Harian' },
+    { key: 'mingguan', label: 'Mingguan' },
+    { key: 'bulanan', label: 'Bulanan' },
+    { key: 'triwulan', label: '3 bulan sekali' },
+    { key: 'semesteran', label: '6 bulan sekali' },
+    { key: 'tahunan', label: 'Tahunan' }
+  ];
+  var STATUS_OPTIONS = ['Belum mulai', 'Berjalan', 'Tertunda', 'Selesai'];
+  var ASPECT_OPTIONS = ['Emisi', 'Air Limbah', 'Limbah B3 dan Non-B3', 'Sampah', 'B3', 'Compliance', 'ISO', 'Inspeksi', 'Umum'];
+
+  var TEMPLATES = {
+    cems: {
+      name: '', frequency: 'tahunan', trackMode: 'tahapan',
+      stages: [
+        { name: 'Perencanaan', weight: 15, tasks: ['Susun jadwal audit', 'Buat & kirim surat penunjukan', 'Koordinasi dengan vendor / lab eksternal'] },
+        { name: 'Persiapan dokumen', weight: 15, tasks: ['Kumpulkan data historis emisi', 'Siapkan SOP & dokumen perizinan terkait', 'Review kelengkapan dokumen sebelum turun lapangan'] },
+        { name: 'Pelaksanaan lapangan', weight: 30, tasks: ['Kalibrasi alat ukur', 'Sampling / pengukuran emisi', 'Dokumentasi kondisi lapangan (foto, video, catatan)', 'Verifikasi data real-time CEMS'] },
+        { name: 'Analisis & evaluasi data', weight: 20, tasks: ['Terima hasil lab', 'Bandingkan hasil dengan baku mutu', 'Identifikasi temuan / penyimpangan'] },
+        { name: 'Pelaporan', weight: 15, tasks: ['Susun draft laporan audit', 'Review internal laporan', 'Finalisasi laporan'] },
+        { name: 'Submit & tindak lanjut', weight: 5, tasks: ['Submit laporan ke instansi terkait', 'Tindak lanjuti temuan / catatan instansi'] }
+      ]
+    },
+    simple_routine: {
+      name: '', frequency: 'harian', trackMode: 'simple', stages: []
+    },
+    blank: {
+      name: '', frequency: 'tahunan', trackMode: 'tahapan',
+      stages: [ { name: 'Tahap 1', weight: 100, tasks: ['Task pertama'] } ]
+    },
+    nonroutine: {
+      name: '', frequency: 'sekali', trackMode: 'tahapan',
+      stages: [ { name: 'Tahap 1', weight: 100, tasks: ['Task pertama'] } ]
+    }
+  };
+
+  function uid(prefix) { return (prefix || 'id') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8); }
+
+  function freqLabel(key) {
+    var f = FREQUENCIES.filter(function(x){ return x.key === key; })[0];
+    return f ? f.label : 'Sekali';
+  }
+
+  function cloneTemplate(key, isRoutine) {
+    var t = TEMPLATES[key];
+    return {
+      id: uid('proj'),
+      name: t.name,
+      category: isRoutine ? 'Rutin' : 'Non-rutin',
+      aspect: 'Umum',
+      frequency: isRoutine ? t.frequency : 'sekali',
+      trackMode: t.trackMode,
+      pic: '',
+      deadline: '',
+      status: 'Berjalan',
+      notes: '',
+      createdAt: new Date().toISOString(),
+      cycleStart: new Date().toISOString(),
+      simpleDone: false,
+      stages: t.stages.map(function(s){
+        return {
+          id: uid('stage'), name: s.name, weight: s.weight, startDate: '', endDate: '',
+          tasks: s.tasks.map(function(tn){ return { id: uid('task'), name: tn, done: false, items: [] }; })
+        };
+      }),
+      history: []
+    };
+  }
+
+  function taskProgress(task) {
+    var items = (task && task.items) || [];
+    if (items.length) {
+      var done = items.filter(function(it){ return it && it.done; }).length;
+      return (done / items.length) * 100;
+    }
+    return (task && task.done) ? 100 : 0;
+  }
+  function stageProgress(stage) {
+    var tasks = (stage && stage.tasks) || [];
+    if (!tasks.length) return 0;
+    var sum = tasks.reduce(function(s, t){ return s + taskProgress(t); }, 0);
+    return sum / tasks.length;
+  }
+  function totalWeightOf(project) {
+    var stages = (project && project.stages) || [];
+    return stages.reduce(function(sum, s){ return sum + Number((s && s.weight) || 0); }, 0);
+  }
+  function projectProgress(project) {
+    if (!project) return 0;
+    if (project.trackMode === 'simple') return project.simpleDone ? 100 : 0;
+    var totalWeight = totalWeightOf(project);
+    if (totalWeight === 0) return 0;
+    var stages = project.stages || [];
+    var weighted = stages.reduce(function(sum, s){
+      return sum + (stageProgress(s) * Number((s && s.weight) || 0)) / totalWeight;
+    }, 0);
+    return Math.round(weighted * 10) / 10;
+  }
+  function isOverdue(targetDate, progress) {
+    if (!targetDate) return false;
+    if (progress >= 100) return false;
+    var target = new Date(targetDate);
+    if (isNaN(target.getTime())) return false;
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    target.setHours(0, 0, 0, 0);
+    return target.getTime() < today.getTime();
+  }
+
+  // ---------- Rekap tahunan ----------
+  // Mengumpulkan seluruh tahun yang punya data (dari tanggal dibuat,
+  // siklus berjalan, atau riwayat siklus yang sudah diarsipkan), supaya
+  // dropdown pemilih tahun di halaman rekap selalu pas dengan data yang
+  // benar-benar ada — termasuk tahun-tahun lampau.
+  function availableRecapYears() {
+    var years = {};
+    years[new Date().getFullYear()] = true;
+    state.projects.forEach(function(p){
+      if (p.createdAt) years[new Date(p.createdAt).getFullYear()] = true;
+      if (p.cycleStart) years[new Date(p.cycleStart).getFullYear()] = true;
+      if (p.deadline) years[new Date(p.deadline).getFullYear()] = true;
+      (p.history || []).forEach(function(h){
+        if (h.completedAt) years[new Date(h.completedAt).getFullYear()] = true;
+        if (h.cycleStart) years[new Date(h.cycleStart).getFullYear()] = true;
+      });
+    });
+    return Object.keys(years).map(Number).sort(function(a, b){ return b - a; });
+  }
+
+  // Untuk satu proyek, cari status proyek tersebut PADA tahun tertentu:
+  // - Proyek rutin yang siklusnya sudah pernah diarsipkan ke riwayat pada
+  //   tahun itu -> pakai progress final siklus tersebut (data historis asli,
+  //   tidak berubah lagi meskipun proyek terus dipakai di tahun-tahun
+  //   berikutnya).
+  // - Proyek rutin yang siklusnya sedang berjalan dan dimulai pada tahun
+  //   itu (atau sebelumnya, dan belum pernah diarsipkan) -> tampilkan
+  //   progress saat ini sebagai estimasi "sejauh ini", ditandai belum final.
+  // - Proyek non-rutin -> dikelompokkan berdasarkan tahun proyek dibuat.
+  function projectYearEntry(project, year) {
+    var isRoutine = project.category === 'Rutin';
+    if (isRoutine) {
+      var archived = (project.history || []).filter(function(h){
+        return h.completedAt && new Date(h.completedAt).getFullYear() === year;
+      });
+      if (archived.length) {
+        // Kalau lebih dari satu siklus diarsipkan di tahun yang sama
+        // (misal proyek bulanan), rata-ratakan progress finalnya.
+        var avg = archived.reduce(function(s, h){ return s + h.finalProgress; }, 0) / archived.length;
+        return { progress: Math.round(avg * 10) / 10, final: true, cycles: archived.length };
+      }
+      var cycleYear = project.cycleStart ? new Date(project.cycleStart).getFullYear() : null;
+      var deadlineYear = project.deadline ? new Date(project.deadline).getFullYear() : null;
+      if (cycleYear !== null) {
+        // Siklus dianggap "mencakup" tahun yang diminta kalau tahun itu berada
+        // di antara cycleStart dan deadline (jika ada target selesai).
+        // Kalau tidak ada deadline, siklus hanya dianggap milik tahun cycleStart-nya
+        // saja, agar tidak ikut muncul di rekap tahun-tahun berikutnya tanpa batas.
+        var coversYear = deadlineYear !== null
+          ? (year >= cycleYear && year <= deadlineYear)
+          : (year === cycleYear);
+        if (coversYear) {
+          // Siklus ini mencakup tahun yang diminta tapi belum pernah
+          // diarsipkan (mis. siklus tahunan yang masih berjalan) -> tampilkan
+          // progress berjalan sebagai estimasi, bukan angka final.
+          return { progress: projectProgress(project), final: false, cycles: 0 };
+        }
+      }
+      return null; // proyek ini tidak punya data sama sekali untuk tahun tsb.
+    }
+    // Non-rutin: anggap "milik" tahun saat proyek itu dibuat.
+    var createdYear = project.createdAt ? new Date(project.createdAt).getFullYear() : null;
+    if (createdYear !== year) return null;
+    return { progress: projectProgress(project), final: project.status === 'Selesai', cycles: 0 };
+  }
+
+  function buildYearlyRecap(year) {
+    var rows = [];
+    state.projects.forEach(function(p){
+      var entry = projectYearEntry(p, year);
+      if (entry) rows.push({ project: p, progress: entry.progress, final: entry.final, cycles: entry.cycles });
+    });
+    var avgAll = rows.length ? rows.reduce(function(s, r){ return s + r.progress; }, 0) / rows.length : 0;
+    var doneCount = rows.filter(function(r){ return r.progress >= 100; }).length;
+    return {
+      year: year,
+      rows: rows,
+      avgProgress: Math.round(avgAll * 10) / 10,
+      doneCount: doneCount,
+      totalCount: rows.length
+    };
+  }
+  function normalizeProject(p) {
+    p = p || {};
+    if (!Array.isArray(p.stages)) p.stages = [];
+    p.stages.forEach(function(s){
+      if (!Array.isArray(s.tasks)) s.tasks = [];
+      s.tasks.forEach(function(t){ if (!Array.isArray(t.items)) t.items = []; });
+      if (typeof s.startDate !== 'string') s.startDate = '';
+      if (typeof s.endDate !== 'string') s.endDate = '';
+    });
+    if (!Array.isArray(p.history)) p.history = [];
+    if (!p.id) p.id = uid('proj');
+    if (!p.category) p.category = 'Non-rutin';
+    if (!p.status) p.status = 'Belum mulai';
+    if (!p.aspect || ASPECT_OPTIONS.indexOf(p.aspect) === -1) p.aspect = 'Umum';
+    if (typeof p.name !== 'string') p.name = '';
+    return p;
+  }
+  function statusColorVars(status) {
+    switch (status) {
+      case 'Selesai': return { bg: 'var(--bg-success)', text: 'var(--text-success)' };
+      case 'Berjalan': return { bg: 'var(--bg-info)', text: 'var(--text-info)' };
+      case 'Tertunda': return { bg: 'var(--bg-danger)', text: 'var(--text-danger)' };
+      default: return { bg: 'var(--bg-well)', text: 'var(--text-secondary)' };
+    }
+  }
+  function gaugeColors(progress) {
+    if (progress >= 100) return { c1: '#0D9488', c2: '#0B7C72', glow: 'rgba(13,148,136,0.28)' };
+    if (progress < 30) return { c1: '#E0524F', c2: '#C9413E', glow: 'rgba(224,82,79,0.22)' };
+    return { c1: '#2563EB', c2: '#1D4FC4', glow: 'rgba(37,99,235,0.22)' };
+  }
+  function renderGauge(progress, opts) {
+    opts = opts || {};
+    var size = opts.size || 'md';
+    var ticks = opts.ticks === false ? false : true;
+    var showReadout = opts.readout !== false;
+    var v = Math.max(0, Math.min(100, progress));
+    var col = gaugeColors(v);
+    var cls = 'gauge' + (size === 'sm' ? ' gauge-sm' : '');
+    var html = '<div style="display:flex; align-items:center; gap:10px; flex:1;">';
+    html += '<div class="' + cls + '" style="flex:1; --g-color:' + col.c1 + '; --g-color-2:' + col.c2 + '; --g-glow:' + col.glow + ';">';
+    if (ticks && size !== 'sm') {
+      html += '<div class="gauge-ticks">';
+      for (var i = 0; i < 10; i++) html += '<span></span>';
+      html += '</div>';
+    }
+    html += '<div class="gauge-fill" style="width:' + v + '%;"></div>';
+    html += '</div>';
+    if (showReadout) {
+      html += '<span class="gauge-readout small" style="min-width:44px; text-align:right; color:' + col.c1 + ';">' + v + '%</span>';
+    }
+    html += '</div>';
+    return html;
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+
+  // ---------- Ikon (inline SVG, bukan font-icon dari CDN) ----------
+  // Sebelumnya ikon dipakai lewat font Tabler Icons yang dimuat dari CDN
+  // eksternal. Kalau koneksi ke CDN itu diblokir (firewall kantor, jaringan
+  // terbatas, dsb), seluruh ikon di aplikasi ini jadi tidak tampil sama
+  // sekali walau tombolnya tetap berfungsi. Supaya ikon selalu tampil tanpa
+  // tergantung internet/CDN, semua ikon di bawah ini digambar langsung
+  // sebagai SVG di dalam HTML.
+  var ICONS = {
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    'arrow-left': '<path d="M19 12H5M12 19l-7-7 7-7"/>',
+    x: '<path d="M18 6 6 18M6 6l12 12"/>',
+    refresh: '<path d="M3 12a9 9 0 0 1 15.4-6.4M21 4v5h-5M21 12a9 9 0 0 1-15.4 6.4M3 20v-5h5"/>',
+    settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+    cloud: '<path d="M7 18a4.5 4.5 0 0 1-1.4-8.78A6 6 0 0 1 17.5 9H18a4 4 0 1 1 0 8H7Z"/>',
+    copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+    check: '<path d="M20 6 9 17l-5-5"/>',
+    download: '<path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M5 19h14"/>',
+    upload: '<path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M5 5h14"/>',
+    'alert-triangle': '<path d="M12 9v3.5M12 17h.01"/><path d="M10.6 3.86 2.1 18a1.8 1.8 0 0 0 1.55 2.7h16.7A1.8 1.8 0 0 0 21.9 18L13.4 3.86a1.8 1.8 0 0 0-3.1 0Z"/>',
+    checkbox: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/>',
+    'file-plus': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 12v6M9 15h6"/>',
+    bolt: '<path d="M13 2 3 14h7l-1 8 11-12h-7l1-8z"/>',
+    trash: '<path d="M4 7h16M10 11v6M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>',
+    'chevron-down': '<path d="m6 9 6 6 6-6"/>',
+    'chevron-right': '<path d="m9 6 6 6-6 6"/>',
+    calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>'
+  };
+  function icon(name, opts) {
+    opts = opts || {};
+    var size = opts.size || 16;
+    var path = ICONS[name] || '';
+    var style = 'width:' + size + 'px; height:' + size + 'px; flex-shrink:0; vertical-align:' + (opts.valign || '-3px') + ';' + (opts.marginRight ? ' margin-right:' + opts.marginRight + 'px;' : '') + (opts.style || '');
+    return '<svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="' + style + '">' + path + '</svg>';
+  }
+  function fmtDate(iso) {
+    if (!iso) return '';
+    try {
+      var d = new Date(iso);
+      return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch(e) { return iso; }
+  }
+  function todayStr() {
+    return new Date().toISOString().slice(0, 10);
+  }
+  function fmtTime(iso) {
+    if (!iso) return '';
+    try {
+      var d = new Date(iso);
+      return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    } catch(e) { return ''; }
+  }
+
+  // ---------- Sync with Google Sheets (Apps Script Web App) ----------
+  var SYNC_URL_KEY = 'enviro-tracker:sync-url';
+  var POLL_INTERVAL_MS = 10000;
+  var pollTimer = null;
+  var pushDebounceTimer = null;
+  var isPushing = false;
+  var lastPushAt = 0;
+  var lastPullAt = 0;
+  // ID proyek yang dibuat lokal dan belum dikonfirmasi masuk ke Sheets
+  var pendingLocalIds = {};
+
+  function getSyncUrl() {
+    try { return localStorage.getItem(SYNC_URL_KEY) || ''; } catch (e) { return ''; }
+  }
+  function setSyncUrl(url) {
+    try { localStorage.setItem(SYNC_URL_KEY, url); } catch (e) {}
+  }
+  function clearSyncUrl() {
+    try { localStorage.removeItem(SYNC_URL_KEY); } catch (e) {}
+  }
+
+  // Render aman dari async callback — tunda jika user sedang mengetik
+  function safeRender() {
+    if (isEditingTextField()) { pendingRender = true; }
+    else { render(); }
+  }
+
+  function pullFromSheet(opts) {
+    opts = opts || {};
+    var url = getSyncUrl();
+    if (!url) return;
+    if (isPushing) return; // push sedang jalan, skip pull ini
+    fetch(url, { method: 'GET' })
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        if (!data || data.ok !== true) throw new Error((data && data.error) || 'Gagal mengambil data');
+        if (isPushing) return; // push mulai saat kita fetch, batalkan apply
+        var fromSheet = (data.projects || []).map(safeNormalize).filter(Boolean);
+        var sheetIds = {};
+        fromSheet.forEach(function(p){ sheetIds[p.id] = true; });
+
+        // Proyek yang perlu dipertahankan dari state lokal:
+        // 1. Proyek yang sedang dibuka user (activeId) — apapun kondisinya,
+        //    agar tidak tiba-tiba hilang dari layar
+        // 2. Proyek yang masih pending (baru dibuat, belum dikonfirmasi di Sheets)
+        // Kalau proyek pending sudah ada di Sheets, hapus dari pending list
+        Object.keys(pendingLocalIds).forEach(function(id){
+          if (sheetIds[id]) delete pendingLocalIds[id];
+        });
+
+        var localProjects = state.projects.filter(function(p){
+          return pendingLocalIds[p.id] || p.id === state.activeId;
+        });
+
+        // Mulai dari data Sheets, tambahkan proyek lokal yang belum ada di sana
+        localProjects.forEach(function(p){
+          if (!sheetIds[p.id]) fromSheet.push(p);
+        });
+
+        state.projects = fromSheet;
+        saveProjects(state.projects);
+        lastPullAt = Date.now();
+        state.syncStatus = 'synced';
+        state.lastSyncAt = new Date().toISOString();
+        state.syncErrorMsg = '';
+        safeRender();
+      })
+      .catch(function(err){
+        state.syncStatus = 'error';
+        state.syncErrorMsg = String(err.message || err);
+        safeRender();
+      });
+  }
+
+  function pushToSheet() {
+    var url = getSyncUrl();
+    if (!url) return;
+    isPushing = true;
+    state.syncStatus = 'syncing';
+    var snapshot = JSON.stringify({ projects: state.projects });
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: snapshot
+    })
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        if (!data || data.ok !== true) throw new Error((data && data.error) || 'Gagal menyimpan data');
+        isPushing = false;
+        lastPushAt = Date.now();
+        state.syncStatus = 'synced';
+        state.lastSyncAt = new Date().toISOString();
+        state.syncErrorMsg = '';
+        safeRender();
+      })
+      .catch(function(err){
+        isPushing = false;
+        state.syncStatus = 'error';
+        state.syncErrorMsg = String(err.message || err);
+        safeRender();
+      });
+  }
+
+  function schedulePush() {
+    if (!getSyncUrl()) return;
+    clearTimeout(pushDebounceTimer);
+    pushDebounceTimer = setTimeout(pushToSheet, 800);
+  }
+
+  function startPolling() {
+    clearInterval(pollTimer);
+    if (!getSyncUrl()) return;
+    pollTimer = setInterval(function(){ pullFromSheet({ silent: true }); }, POLL_INTERVAL_MS);
+  }
+
+  function disconnectSync() {
+    clearSyncUrl();
+    clearInterval(pollTimer);
+    state.syncStatus = 'offline';
+    render();
+  }
+
+  var state = {
+    projects: loadProjects(),
+    activeTab: 'rutin',
+    view: 'list',
+    activeId: null,
+    filterFrequency: 'Semua',
+    filterStatus: 'Semua',
+    filterAspect: 'Semua',
+    newIsRoutine: true,
+    newTemplateKey: 'blank',
+    newForm: { name: '', frequency: 'tahunan', trackMode: 'tahapan', pic: '', deadline: '', startDate: todayStr(), status: 'Belum mulai', aspect: 'Umum' },
+    confirmDeleteId: null,
+    confirmNewCycle: false,
+    showHistory: false,
+    saveError: false,
+    expandedStages: {},
+    expandedTasks: {},
+    syncStatus: getSyncUrl() ? 'syncing' : 'offline',
+    lastSyncAt: null,
+    syncErrorMsg: '',
+    showSetupModal: false,
+    setupUrlInput: '',
+    recapYear: new Date().getFullYear()
+  };
+
+  function persist() {
+    state.saveError = !saveProjects(state.projects);
+    render();
+    schedulePush();
+  }
+  // Sama seperti persist(), tapi TIDAK memanggil render(). Dipakai saat user
+  // sedang mengetik di sebuah input teks (oninput), supaya elemen tidak
+  // dibangun ulang di tengah pengetikan (yang akan menghapus fokus & posisi
+  // kursor, menyebabkan input seperti hanya menerima satu karakter).
+  function persistSilent() {
+    state.saveError = !saveProjects(state.projects);
+    schedulePush();
+  }
+  function findProject(id) { return state.projects.filter(function(p){ return p.id === id; })[0] || null; }
+
+  var app = document.getElementById('app');
+  var pendingRender = false;
+
+  // Sekumpulan id/atribut input teks yang aman untuk "diketik" tanpa
+  // diinterupsi oleh render() yang datang dari proses lain (sync ke Sheets,
+  // polling otomatis, dsb). Kalau elemen yang sedang fokus ada di sini,
+  // render() ditunda sampai user pindah fokus (blur) dari input tersebut.
+  function isEditingTextField() {
+    var el = document.activeElement;
+    if (!el || !app.contains(el)) return false;
+    var tag = el.tagName;
+    if (tag !== 'INPUT' && tag !== 'TEXTAREA') return false;
+    if (el.type === 'checkbox' || el.type === 'radio') return false;
+    return true;
+  }
+
+  function render() {
+    // Kalau ada render lain yang sedang ditunda (mis. dipicu sync di
+    // belakang layar) sementara user mengetik, jangan timpa DOM sekarang —
+    // tunggu sampai user selesai (blur), lalu render sekali saja saat itu.
+    if (isEditingTextField()) { pendingRender = true; return; }
+    pendingRender = false;
+    try {
+      var html = '<h2 class="sr-only">SIPANTEK — Sistem Pelaporan Environmental Terkini, terbagi rutin dan non-rutin, dengan progress berbasis tahapan atau status selesai per siklus</h2>';
+      if (state.saveError) {
+        html += '<div class="card" style="background:var(--bg-danger); color:var(--text-danger); border:none; margin-bottom:12px; padding:8px 12px; font-size:13px;">Gagal menyimpan perubahan ke penyimpanan browser ini.</div>';
+      }
+      if (state.view === 'list') html += renderListView();
+      else if (state.view === 'new') html += renderNewView();
+      else if (state.view === 'detail') {
+        var _p = findProject(state.activeId);
+        if (!_p) {
+          console.error('SIPANTEK: activeId=' + state.activeId + ' tidak ditemukan di state.projects (jumlah=' + state.projects.length + ')');
+          state.view = 'list'; html += renderListView();
+        } else {
+          html += renderDetailView(_p);
+        }
+      }
+      else if (state.view === 'recap') html += renderRecapView();
+      if (state.showSetupModal) html += renderSetupModal();
+      app.innerHTML = html;
+      bindEvents();
+    } catch (err) {
+      // Jangan biarkan layar jadi kosong total kalau terjadi error tak
+      // terduga saat membangun tampilan — kembalikan ke daftar proyek
+      // (tampilan paling aman) supaya data yang sudah tersimpan tidak
+      // terasa "hilang" di mata pengguna.
+      console.error('SIPANTEK render error (view=' + state.view + ', activeId=' + state.activeId + '):', err);
+      if (state.view !== 'list') {
+        var savedActiveId = state.activeId;
+        state.view = 'list';
+        state.activeId = null;
+        try {
+          app.innerHTML = renderListView();
+          bindEvents();
+          // Tunjukkan pesan error singkat di atas list agar user tahu ada yang salah
+          var errBanner = document.createElement('div');
+          errBanner.style.cssText = 'background:var(--bg-danger);color:var(--text-danger);padding:8px 12px;border-radius:8px;margin-bottom:12px;font-size:13px;';
+          errBanner.textContent = 'Terjadi kesalahan tampilan (lihat Console untuk detail). Data proyek aman tersimpan.';
+          app.insertBefore(errBanner, app.firstChild);
+        } catch (err2) { console.error('SIPANTEK fallback render error:', err2); }
+      }
+    }
+  }
+
+  // Saat user pindah fokus keluar dari sebuah input teks, jalankan render
+  // yang sempat ditunda (kalau ada) supaya tampilan kembali sinkron dengan
+  // data terbaru tanpa pernah mengganggu proses pengetikan itu sendiri.
+  document.addEventListener('focusout', function(e){
+    var tag = e.target && e.target.tagName;
+    if (tag !== 'INPUT' && tag !== 'TEXTAREA') return;
+    if (pendingRender) render();
+  }, true);
+
+  // ---------- List view ----------
+  function renderSyncControls() {
+    var html = '';
+    var hasUrl = !!getSyncUrl();
+    if (hasUrl) {
+      var dotClass = state.syncStatus === 'synced' ? 'synced' : (state.syncStatus === 'syncing' ? 'syncing' : (state.syncStatus === 'error' ? 'error' : 'offline'));
+      var label = state.syncStatus === 'synced' ? ('Tersinkron' + (state.lastSyncAt ? ' &middot; ' + fmtTime(state.lastSyncAt) : ''))
+        : state.syncStatus === 'syncing' ? 'Menyinkronkan...'
+        : state.syncStatus === 'error' ? 'Gagal sinkron'
+        : 'Belum sinkron';
+      html += '<div class="sync-status" title="' + esc(state.syncErrorMsg || '') + '"><span class="sync-dot ' + dotClass + '"></span>' + label + '</div>';
+      html += '<button class="ghost" id="btn-refresh-sync" title="Tarik data terbaru">' + icon('refresh', { valign: '-3px' }) + '</button>';
+      html += '<button class="ghost" id="btn-sync-settings" title="Pengaturan sinkron">' + icon('settings', { valign: '-3px' }) + '</button>';
+    } else {
+      html += '<button class="ghost" id="btn-sync-settings">' + icon('cloud', { marginRight: 4 }) + 'Hubungkan ke Sheets</button>';
+    }
+    return html;
+  }
+
+  function renderSetupModal() {
+    var hasUrl = !!getSyncUrl();
+    var html = '<div class="modal-overlay" id="modal-overlay">';
+    html += '<div class="modal-box">';
+    html += '<div class="between" style="margin-bottom:1rem;"><h3 style="font-size:17px;">Sinkron ke Google Sheets</h3><button class="icon-btn" id="btn-close-modal" aria-label="Tutup">' + icon('x', { valign: '-3px' }) + '</button></div>';
+
+    if (hasUrl) {
+      html += '<p class="small muted" style="margin-bottom:12px;">Tracker ini sedang terhubung ke Google Sheets. Semua orang yang membuka file HTML ini dengan URL yang sama akan melihat data yang sama.</p>';
+      html += '<div class="card" style="background:var(--bg-well); border:none; font-size:12.5px; word-break:break-all; margin-bottom:14px;">' + esc(getSyncUrl()) + '</div>';
+      html += '<div class="row" style="gap:8px;">';
+      html += '<button class="ghost small" id="btn-disconnect-sync" style="color:var(--text-danger);">Putuskan koneksi</button>';
+      html += '</div>';
+    } else {
+      html += '<p class="small muted" style="margin-bottom:14px;">Hubungkan tracker ini ke Google Sheets supaya data bisa dipakai bersama tim. Butuh setup sekali di Google Sheets (sekitar 5 menit).</p>';
+
+      html += '<div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">';
+      html += stepRow('1', 'Buat Google Sheet baru (kosong, nama bebas).');
+      html += stepRow('2', 'Buka menu <strong>Extensions &gt; Apps Script</strong>.');
+      html += stepRow('3', 'Hapus kode default, lalu tempel kode backend yang sudah disiapkan (lihat tombol di bawah untuk salin kode).');
+      html += stepRow('4', '<strong>Deploy &gt; New deployment</strong> &rarr; pilih tipe <strong>Web app</strong> &rarr; Execute as: <strong>Me</strong> &rarr; Who has access: <strong>Anyone with the link</strong> &rarr; Deploy.');
+      html += stepRow('5', 'Otorisasi akses saat diminta (klik akun Google kamu &rarr; Advanced &rarr; lanjutkan).');
+      html += stepRow('6', 'Salin URL Web App yang muncul (diakhiri <code>/exec</code>), lalu tempel di bawah ini.');
+      html += '</div>';
+
+      html += '<button class="ghost small" id="btn-copy-script" style="margin-bottom:14px;">' + icon('copy', { size: 14, valign: '-2px', marginRight: 4 }) + 'Salin kode Apps Script</button>';
+
+      html += '<label class="small muted" style="display:block; margin-bottom:6px;">URL Web App (diakhiri /exec)</label>';
+      html += '<input id="setup-url-input" placeholder="https://script.google.com/macros/s/.../exec" value="' + esc(state.setupUrlInput) + '" style="margin-bottom:10px;">';
+      html += '<button class="primary" id="btn-connect-sync">Hubungkan</button>';
+    }
+
+    html += '</div></div>';
+    return html;
+  }
+
+  function stepRow(num, text) {
+    return '<div class="row" style="align-items:flex-start; gap:10px;"><span class="step-num" style="margin-top:1px;">' + num + '</span><span class="small" style="flex:1;">' + text + '</span></div>';
+  }
+
+  function renderListView() {
+    var isRoutine = state.activeTab === 'rutin';
+    var pool = state.projects.filter(function(p){ return (p.category === 'Rutin') === isRoutine; });
+    var filtered = pool.filter(function(p){
+      var freqOk = state.filterFrequency === 'Semua' || p.frequency === state.filterFrequency;
+      var statOk = state.filterStatus === 'Semua' || p.status === state.filterStatus;
+      var aspectOk = state.filterAspect === 'Semua' || p.aspect === state.filterAspect;
+      return freqOk && statOk && aspectOk;
+    });
+
+    var avg = pool.length ? Math.round((pool.reduce(function(s,p){ return s + projectProgress(p); }, 0) / pool.length) * 10) / 10 : 0;
+    var ongoing = pool.filter(function(p){ return p.status === 'Berjalan'; }).length;
+    var done = pool.filter(function(p){ return p.status === 'Selesai'; }).length;
+    var delayed = pool.filter(function(p){ return p.status === 'Tertunda'; }).length;
+
+    var html = '';
+    html += '<div class="topbar">';
+    html += '<div><p class="eyebrow"><span class="dot"></span>Sistem Pelaporan Environmental Terkini</p><div class="wordmark">SIPANTEK</div><p class="tagline">#kerjabercandagajiserius</p></div>';
+    html += '<div class="top-actions">';
+    html += '<div class="logo-strip"><img class="logo-perusahaan" src="' + LOGO_PERUSAHAAN + '" alt="Logo perusahaan"><img src="' + LOGO_ENVIRO + '" alt="Logo Enviro"><img src="' + LOGO_KLH + '" alt="Logo KLH"></div>';
+    html += renderSyncControls();
+    html += '<button class="ghost" id="btn-recap" title="Lihat rekap progress per tahun, termasuk tahun-tahun sebelumnya">' + icon('calendar', { marginRight: 4 }) + 'Rekap Tahunan</button>';
+    html += '<button class="ghost" id="btn-export" title="Unduh seluruh data proyek sebagai file .json untuk dicadangkan atau dipindahkan ke perangkat lain">' + icon('download', { marginRight: 4 }) + 'Export</button>';
+    html += '<button class="ghost" id="btn-import" title="Muat data proyek dari file .json hasil Export sebelumnya">' + icon('upload', { marginRight: 4 }) + 'Import</button>';
+    html += '<button class="ghost" id="btn-recover" title="Coba pulihkan proyek yang mungkin tersembunyi akibat error pembacaan data" style="color:var(--text-danger);">' + icon('alert-triangle', { marginRight: 4, size: 14 }) + 'Pulihkan data</button>';
+    html += '<input type="file" id="file-import" accept="application/json" style="display:none;">';
+    html += '<button class="primary" id="btn-new">' + icon('plus', { marginRight: 4 }) + 'Proyek baru</button>';
+    html += '</div></div>';
+
+    html += '<div class="tabs">';
+    html += '<button class="tab-btn ' + (isRoutine ? 'active' : '') + '" data-tab="rutin">Rutin</button>';
+    html += '<button class="tab-btn ' + (!isRoutine ? 'active' : '') + '" data-tab="nonrutin">Non-rutin</button>';
+    html += '</div>';
+
+    html += '<div class="metric-grid">';
+    html += metricCard('Total proyek', pool.length);
+    html += metricCard('Sedang berjalan', ongoing);
+    html += metricCard('Selesai', done);
+    html += metricCard('Tertunda', delayed);
+    html += metricCard('Rata-rata progress', avg + '%', true);
+    html += '</div>';
+
+    html += '<div class="filters">';
+    if (isRoutine) {
+      html += '<select id="filter-frequency"><option value="Semua">Semua frekuensi</option>' + FREQUENCIES.map(function(f){ return '<option value="'+f.key+'" '+(state.filterFrequency===f.key?'selected':'')+'>'+esc(f.label)+'</option>'; }).join('') + '</select>';
+    }
+    html += '<select id="filter-status"><option value="Semua">Semua status</option>' + STATUS_OPTIONS.map(function(s){ return '<option value="'+esc(s)+'" '+(state.filterStatus===s?'selected':'')+'>'+esc(s)+'</option>'; }).join('') + '</select>';
+    html += '<select id="filter-aspect"><option value="Semua">Semua aspek</option>' + ASPECT_OPTIONS.map(function(a){ return '<option value="'+esc(a)+'" '+(state.filterAspect===a?'selected':'')+'>'+esc(a)+'</option>'; }).join('') + '</select>';
+    html += '</div>';
+
+    if (filtered.length === 0) {
+      html += '<div class="empty-state">' + (pool.length === 0
+        ? (isRoutine
+          ? 'Belum ada proyek rutin. Buat proyek seperti audit CEMS tahunan untuk mulai melacak.'
+          : 'Belum ada proyek non-rutin. Cocok untuk hal mendadak seperti kunjungan pemerintah.')
+        : 'Tidak ada proyek yang cocok dengan filter ini.') + '</div>';
+    } else {
+      html += '<div style="display:flex; flex-direction:column; gap:10px;">';
+      filtered.forEach(function(p){
+        var progress = projectProgress(p);
+        var sc = statusColorVars(p.status);
+        var wTotal = totalWeightOf(p);
+        html += '<div class="proj-card" data-open="' + p.id + '">';
+        html += '<div class="between" style="align-items:flex-start; gap:12px; margin-bottom:10px;">';
+        html += '<div style="min-width:0;">';
+        html += '<div class="row" style="gap:8px;">';
+        html += '<p style="margin:0; font-weight:500; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + esc(p.name || '(tanpa nama)') + '</p>';
+        if (isRoutine) html += '<span class="freq-pill">' + esc(freqLabel(p.frequency)) + '</span>';
+        html += '<span class="freq-pill">' + esc(p.aspect || 'Umum') + '</span>';
+        if (isOverdue(p.deadline, progress)) html += '<span class="badge" style="background:var(--bg-danger); color:var(--text-danger);">' + icon('alert-triangle', { size: 11, marginRight: 3 }) + 'Terlambat</span>';
+        html += '</div>';
+        html += '<div class="row tiny muted" style="margin-top:4px; flex-wrap:wrap; gap:8px;">';
+        if (p.pic) html += '<span>PIC: ' + esc(p.pic) + '</span>';
+        if (p.cycleStart) html += '<span>&middot; Mulai: ' + fmtDate(p.cycleStart) + '</span>';
+        if (p.deadline) html += '<span>&middot; Target: ' + fmtDate(p.deadline) + '</span>';
+        if (p.history && p.history.length) html += '<span>&middot; ' + p.history.length + ' siklus selesai</span>';
+        html += '</div></div>';
+        html += '<span class="badge" style="background:' + sc.bg + '; color:' + sc.text + ';">' + esc(p.status) + '</span>';
+        html += '</div>';
+        html += '<div class="row" style="gap:10px;">';
+        html += renderGauge(progress, { size: 'sm' });
+        html += '</div>';
+        if (p.trackMode === 'tahapan' && wTotal !== 100) {
+          html += '<p class="alert">' + icon('alert-triangle', { size: 13, valign: '-2px', marginRight: 4 }) + 'Total bobot tahapan ' + wTotal + '%, seharusnya 100%</p>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    return html;
+  }
+
+  function metricCard(label, value, accent) {
+    return '<div class="metric-card"><p class="lbl">' + esc(label) + '</p><p class="val' + (accent ? ' accent' : '') + '">' + esc(value) + '</p></div>';
+  }
+
+  // ---------- Recap view ----------
+  function renderRecapView() {
+    var years = availableRecapYears();
+    if (years.indexOf(state.recapYear) === -1) state.recapYear = years[0];
+    var recap = buildYearlyRecap(state.recapYear);
+    var html = '';
+    html += '<button class="ghost" id="btn-back" style="margin-bottom:1rem;">' + icon('arrow-left', { marginRight: 4 }) + 'Kembali</button>';
+
+    html += '<div class="between" style="margin-bottom:1.25rem; flex-wrap:wrap; gap:10px;">';
+    html += '<h1 style="font-size:20px;">Rekap Tahunan</h1>';
+    html += '<select id="recap-year" style="font-weight:600;">' + years.map(function(y){ return '<option value="'+y+'" '+(y===state.recapYear?'selected':'')+'>'+y+'</option>'; }).join('') + '</select>';
+    html += '</div>';
+
+    html += '<div class="metric-grid" style="margin-bottom:1.25rem;">';
+    html += metricCard('Rata-rata progress ' + state.recapYear, recap.avgProgress + '%', true);
+    html += metricCard('Proyek tuntas 100%', recap.doneCount + ' dari ' + recap.totalCount);
+    html += metricCard('Total proyek tercatat', recap.totalCount);
+    html += '</div>';
+
+    if (!recap.rows.length) {
+      html += '<div class="card" style="text-align:center; padding:2rem 1rem;">';
+      html += '<p class="small muted" style="margin:0;">Belum ada proyek yang tercatat untuk tahun ' + state.recapYear + '. Data akan muncul di sini begitu ada proyek yang dibuat atau siklus yang diarsipkan pada tahun tersebut.</p>';
+      html += '</div>';
+      return html;
+    }
+
+    var routineRows = recap.rows.filter(function(r){ return r.project.category === 'Rutin'; });
+    var nonRoutineRows = recap.rows.filter(function(r){ return r.project.category !== 'Rutin'; });
+
+    function recapTable(rows) {
+      var t = '<div class="card" style="padding:0; overflow:hidden;">';
+      rows.forEach(function(r, idx){
+        var p = r.project;
+        t += '<div class="recap-row' + (idx < rows.length - 1 ? ' bordered' : '') + '">';
+        t += '<div style="flex:1; min-width:0;">';
+        t += '<p style="margin:0; font-weight:500; font-size:14.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + esc(p.name || '(tanpa nama)') + '</p>';
+        t += '<p class="small muted" style="margin:2px 0 0;">' + esc(p.aspect || 'Umum') + (p.category === 'Rutin' ? ' &middot; ' + esc(freqLabel(p.frequency)) : '') + (r.cycles > 1 ? ' &middot; ' + r.cycles + ' siklus diarsipkan' : '') + '</p>';
+        t += '</div>';
+        t += '<div style="text-align:right; flex-shrink:0;">';
+        t += '<p style="margin:0; font-weight:600; font-size:15px;">' + r.progress + '%</p>';
+        t += '<p class="small muted" style="margin:2px 0 0;">' + (r.final ? 'Final' : 'Berjalan, belum diarsipkan') + '</p>';
+        t += '</div>';
+        t += '</div>';
+      });
+      t += '</div>';
+      return t;
+    }
+
+    if (routineRows.length) {
+      html += '<h3 style="font-size:14px; color:var(--text-secondary); margin:0 0 8px;">Proyek rutin (' + routineRows.length + ')</h3>';
+      html += recapTable(routineRows);
+    }
+    if (nonRoutineRows.length) {
+      html += '<h3 style="font-size:14px; color:var(--text-secondary); margin:' + (routineRows.length ? '20px' : '0') + ' 0 8px;">Proyek non-rutin (' + nonRoutineRows.length + ')</h3>';
+      html += recapTable(nonRoutineRows);
+    }
+
+    html += '<p class="small muted" style="margin-top:16px;">Progress proyek rutin yang ditandai &ldquo;Berjalan, belum diarsipkan&rdquo; adalah angka saat ini (live) untuk siklus yang mencakup tahun ' + state.recapYear + ', dan masih bisa berubah sampai kamu menekan &ldquo;Mulai siklus baru&rdquo; pada proyek tersebut.</p>';
+
+    return html;
+  }
+
+
+  // ---------- New project view ----------
+  function renderNewView() {
+    var isRoutine = state.newIsRoutine;
+    var key = state.newTemplateKey;
+    var f = state.newForm;
+    var html = '';
+    html += '<button class="ghost" id="btn-back" style="margin-bottom:1rem;">' + icon('arrow-left', { marginRight: 4 }) + 'Kembali</button>';
+    html += '<h1 style="font-size:20px; margin-bottom:1.25rem;">Proyek baru</h1>';
+    html += '<div style="display:flex; flex-direction:column; gap:14px;">';
+
+    html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">Jenis proyek</label>';
+    html += '<div class="mode-toggle">';
+    html += '<div class="mode-card ' + (isRoutine ? 'active' : '') + '" data-routine="1"><strong>Rutin</strong><div class="tiny muted" style="margin-top:2px;">berulang dengan frekuensi tetap</div></div>';
+    html += '<div class="mode-card ' + (!isRoutine ? 'active' : '') + '" data-routine="0"><strong>Non-rutin</strong><div class="tiny muted" style="margin-top:2px;">sekali jalan, tidak terjadwal</div></div>';
+    html += '</div></div>';
+
+    html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">Mulai dari template</label>';
+    html += '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px,1fr)); gap:8px;">';
+    if (isRoutine) {
+      html += '<div class="template-card ' + (key==='simple_routine'?'active':'') + '" data-template="simple_routine">' + icon('checkbox', { size: 20, valign: '-4px' }) + '<p class="t-title">Paket Hemat</p><p class="t-sub">hanya tandai selesai per pekerjaan</p></div>';
+      html += '<div class="template-card ' + (key==='blank'?'active':'') + '" data-template="blank">' + icon('file-plus', { size: 20, valign: '-4px' }) + '<p class="t-title">Paket Suka-suka</p><p class="t-sub">susun tahapan dan ceklis sesukamu</p></div>';
+    } else {
+      html += '<div class="template-card ' + (key==='nonroutine'?'active':'') + '" data-template="nonroutine">' + icon('bolt', { size: 20, valign: '-4px' }) + '<p class="t-title">Mulai kosong</p><p class="t-sub">misal kunjungan pemerintah</p></div>';
+    }
+    html += '</div></div>';
+
+    html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">Aspek</label>';
+    html += '<select id="new-aspect">' + ASPECT_OPTIONS.map(function(a){ return '<option value="'+esc(a)+'" '+(f.aspect===a?'selected':'')+'>'+esc(a)+'</option>'; }).join('') + '</select></div>';
+
+    html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">Nama proyek</label>';
+    html += '<input id="new-name" value="' + esc(f.name) + '" placeholder="' + (isRoutine ? 'misal: Audit CEMS PLTU Unit 1' : 'misal: Kunjungan Dinas LH ke lokasi pabrik') + '"></div>';
+
+    if (isRoutine) {
+      html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">Frekuensi</label>';
+      html += '<select id="new-frequency">' + FREQUENCIES.map(function(fr){ return '<option value="'+fr.key+'" '+(f.frequency===fr.key?'selected':'')+'>'+esc(fr.label)+'</option>'; }).join('') + '</select></div>';
+
+      if (key !== 'simple_routine') {
+        html += '<p class="small muted" style="margin:0;">Progress proyek ini dihitung otomatis dari tahapan, task, dan item yang kamu susun di bawah &mdash; tinggal lanjut isi detail proyek.</p>';
+      }
+    }
+
+    html += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">';
+    html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">Tanggal mulai</label><input type="date" id="new-start-date" value="' + esc(f.startDate) + '"></div>';
+    html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">Target selesai</label><input type="date" id="new-deadline" value="' + esc(f.deadline) + '"></div>';
+    html += '</div>';
+
+    html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">PIC</label><input id="new-pic" value="' + esc(f.pic) + '" placeholder="nama penanggung jawab"></div>';
+
+    html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">Status proyek</label>';
+    html += '<select id="new-status">' + STATUS_OPTIONS.map(function(s){ return '<option value="'+esc(s)+'" '+(f.status===s?'selected':'')+'>'+esc(s)+'</option>'; }).join('') + '</select></div>';
+
+    if (isRoutine && key === 'simple_routine') {
+      html += '<div class="card" style="background:var(--bg-well); border:none; padding:0.75rem 1rem; font-size:13px; color:var(--text-secondary);">Cocok untuk cek harian/bulanan yang tidak perlu tahapan detail &mdash; cukup tandai selesai, lalu mulai siklus berikutnya.</div>';
+    }
+
+    html += '<button class="primary" id="btn-create" style="align-self:flex-start; margin-top:4px;">' + icon('plus', { marginRight: 4 }) + 'Buat proyek</button>';
+    html += '</div>';
+    return html;
+  }
+
+  // ---------- Detail view ----------
+  function renderDetailView(project) {
+    if (!project) return '<p class="muted">Proyek tidak ditemukan.</p>';
+    var progress = projectProgress(project);
+    var wTotal = totalWeightOf(project);
+    var isRoutine = project.category === 'Rutin';
+    var html = '';
+
+    html += '<div class="between" style="margin-bottom:1rem;">';
+    html += '<div class="row" style="gap:10px;">';
+    html += '<button class="ghost" id="btn-back">' + icon('arrow-left', { marginRight: 4 }) + 'Kembali</button>';
+    if (isOverdue(project.deadline, progress)) html += '<span class="badge" style="background:var(--bg-danger); color:var(--text-danger);">' + icon('alert-triangle', { size: 11, marginRight: 3 }) + 'Terlambat dari target</span>';
+    html += '</div>';
+    if (state.confirmDeleteId === project.id) {
+      html += '<div class="row small">';
+      html += '<span class="muted">Yakin hapus?</span>';
+      html += '<button class="ghost" id="btn-confirm-delete" style="color:var(--text-danger);">Ya, hapus</button>';
+      html += '<button class="ghost" id="btn-cancel-delete">Batal</button>';
+      html += '</div>';
+    } else {
+      html += '<button class="ghost small" id="btn-ask-delete" style="color:var(--text-danger);">' + icon('trash', { size: 14, valign: '-2px', marginRight: 4 }) + 'Hapus proyek</button>';
+    }
+    html += '</div>';
+
+    html += '<div style="margin-bottom:1.25rem;">';
+    html += '<input class="name-input-large" id="proj-name" value="' + esc(project.name) + '" placeholder="Nama proyek">';
+    html += '<div class="meta-row">';
+    html += '<span class="freq-pill" style="align-self:flex-end; margin-bottom:9px;">' + esc(project.category) + (isRoutine ? ' &middot; ' + esc(freqLabel(project.frequency)) : '') + '</span>';
+    html += '<div class="meta-field"><span class="tiny muted">Aspek</span><select id="proj-aspect">' + ASPECT_OPTIONS.map(function(a){ return '<option value="'+esc(a)+'" '+(project.aspect===a?'selected':'')+'>'+esc(a)+'</option>'; }).join('') + '</select></div>';
+    html += '<div class="meta-field"><span class="tiny muted">Status</span><select id="proj-status">' + STATUS_OPTIONS.map(function(s){ return '<option value="'+esc(s)+'" '+(project.status===s?'selected':'')+'>'+esc(s)+'</option>'; }).join('') + '</select></div>';
+    html += '<div class="meta-field"><span class="tiny muted">PIC</span><input id="proj-pic" value="' + esc(project.pic) + '" placeholder="PIC"></div>';
+    html += '<div class="meta-field"><span class="tiny muted">Mulai</span><input type="date" id="proj-start-date" value="' + esc((project.cycleStart || '').slice(0,10)) + '"></div>';
+    html += '<div class="meta-field"><span class="tiny muted">Target selesai</span><input type="date" id="proj-deadline" value="' + esc(project.deadline) + '"></div>';
+    html += '</div></div>';
+
+    if (isRoutine) {
+      html += '<div class="cycle-banner">';
+      html += '<span>' + icon('refresh', { valign: '-2px', marginRight: 6 }) + 'Siklus berjalan sejak ' + fmtDate(project.cycleStart) + (project.history && project.history.length ? ' &middot; ' + project.history.length + ' siklus sebelumnya tersimpan di riwayat' : '') + '</span>';
+      if (!state.confirmNewCycle) {
+        html += '<button class="ghost small" id="btn-ask-new-cycle" style="white-space:nowrap;">Mulai siklus baru</button>';
+      } else {
+        html += '<div class="row small" style="white-space:nowrap;"><span class="muted">Reset progress &amp; simpan ke riwayat?</span><button class="ghost" id="btn-confirm-new-cycle" style="color:var(--text-success); font-weight:500;">Ya, mulai baru</button><button class="ghost" id="btn-cancel-new-cycle">Batal</button></div>';
+      }
+      html += '</div>';
+    }
+
+    if (project.trackMode === 'simple') {
+      html += '<div class="simple-done-card" style="margin-bottom:1.5rem;">';
+      html += '<div><p style="margin:0; font-weight:500; font-size:15px;">' + (project.simpleDone ? 'Sudah selesai siklus ini' : 'Belum selesai siklus ini') + '</p><p class="small muted" style="margin:4px 0 0;">Tandai saat pekerjaan periode ini sudah tuntas. Setelah itu, klik &ldquo;Mulai siklus baru&rdquo; di atas untuk menyimpan siklus ini ke riwayat dan memulai periode berikutnya.</p></div>';
+      html += '<button class="' + (project.simpleDone ? 'ghost' : 'success-btn') + '" id="btn-toggle-simple">' + (project.simpleDone ? 'Batalkan tanda selesai' : 'Tandai selesai') + '</button>';
+      html += '</div>';
+    } else {
+      var gcol = gaugeColors(progress);
+      html += '<div class="card" style="background:var(--bg-well); border-color:var(--border-strong); margin-bottom:1.5rem; position:relative; overflow:hidden;">';
+      html += '<div class="between" style="align-items:flex-end; margin-bottom:10px;">';
+      html += '<span class="eyebrow" style="margin:0;"><span class="dot" style="background:' + gcol.c1 + '; box-shadow:0 0 6px ' + gcol.c1 + ';"></span>Progress siklus ini</span>';
+      html += '<span class="gauge-readout" style="font-size:34px; color:' + gcol.c1 + ';">' + progress + '<span style="font-size:16px; opacity:0.6;">%</span></span>';
+      html += '</div>';
+      html += renderGauge(progress, { readout: false });
+      if (wTotal !== 100) {
+        html += '<p class="alert" style="margin-top:10px;">' + icon('alert-triangle', { size: 13, valign: '-2px', marginRight: 4 }) + 'Total bobot tahapan saat ini ' + wTotal + '%. Sesuaikan bobot tiap tahap agar totalnya 100% supaya angka progress akurat.</p>';
+      }
+      html += '</div>';
+
+      html += '<div class="between" style="margin-bottom:10px;"><h3 style="font-size:16px;">Tahapan</h3>';
+      html += '<button class="ghost small" id="btn-add-stage">' + icon('plus', { size: 14, valign: '-2px', marginRight: 4 }) + 'Tambah tahap</button></div>';
+
+      html += '<div style="display:flex; flex-direction:column; gap:10px;">';
+      project.stages.forEach(function(stage){ html += renderStageCard(stage); });
+      html += '</div>';
+    }
+
+    if (isRoutine) {
+      html += '<div style="margin-top:1.5rem;">';
+      html += '<button class="ghost row small" id="btn-toggle-history">' + icon(state.showHistory ? 'chevron-down' : 'chevron-right') + 'Riwayat siklus (' + (project.history ? project.history.length : 0) + ')</button>';
+      if (state.showHistory) {
+        html += '<div class="card" style="margin-top:8px;">';
+        if (!project.history || !project.history.length) {
+          html += '<p class="small muted" style="margin:0;">Belum ada siklus yang diarsipkan. Riwayat akan terisi setelah kamu menandai pekerjaan periode ini selesai, lalu menekan &ldquo;Mulai siklus baru&rdquo; di atas.</p>';
+        } else {
+          project.history.slice().reverse().forEach(function(h){
+            html += '<div class="history-row"><span>' + fmtDate(h.cycleStart) + ' &ndash; ' + fmtDate(h.completedAt) + '</span><span style="font-weight:500;">' + h.finalProgress + '%</span></div>';
+          });
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    html += '<div style="margin-top:1.5rem;">';
+    html += '<label class="small muted" style="display:block; margin-bottom:6px;">Catatan</label>';
+    html += '<textarea id="proj-notes" placeholder="catatan tambahan, kendala, atau konteks untuk laporan">' + esc(project.notes) + '</textarea>';
+    html += '</div>';
+
+    return html;
+  }
+
+  function renderStageCard(stage) {
+    var progress = Math.round(stageProgress(stage));
+    var doneCount = stage.tasks.filter(function(t){ return taskProgress(t) >= 100; }).length;
+    var expanded = state.expandedStages[stage.id] !== false;
+    var html = '<div class="stage-card" data-stage="' + stage.id + '">';
+    html += '<div class="row" style="gap:10px;">';
+    html += '<button class="icon-btn" data-toggle-stage="' + stage.id + '" aria-label="' + (expanded ? 'Tutup tahap' : 'Buka tahap') + '">' + icon(expanded ? 'chevron-down' : 'chevron-right') + '</button>';
+    html += '<input class="stage-name-input" data-stage-name="' + stage.id + '" value="' + esc(stage.name) + '" style="flex:1; min-width:0;">';
+    if (isOverdue(stage.endDate, progress)) html += '<span class="badge" style="background:var(--bg-danger); color:var(--text-danger); flex-shrink:0;">' + icon('alert-triangle', { size: 10, marginRight: 3 }) + 'Terlambat</span>';
+    html += '<div class="row" style="gap:4px;"><input type="number" min="0" max="100" class="weight-input" data-stage-weight="' + stage.id + '" value="' + stage.weight + '"><span class="small muted">%</span></div>';
+    html += '<button class="icon-btn" data-delete-stage="' + stage.id + '" aria-label="Hapus tahap">' + icon('x') + '</button>';
+    html += '</div>';
+
+    html += '<div class="row" style="gap:20px; margin-top:8px; margin-left:34px; flex-wrap:wrap;">';
+    html += '<div class="row" style="gap:10px;">';
+    html += renderGauge(progress, { size: 'sm', readout: false });
+    html += '<span class="tiny muted mono" style="min-width:90px; text-align:right; flex-shrink:0;">' + doneCount + '/' + stage.tasks.length + ' task &mdash; ' + progress + '%</span>';
+    html += '</div>';
+    html += '<div class="row" style="gap:6px; align-items:center; flex-wrap:wrap;">';
+    html += '<span class="tiny muted">Mulai</span><input type="date" class="stage-date-input" data-stage-start="' + stage.id + '" value="' + esc(stage.startDate || '') + '">';
+    html += '<span class="tiny muted" style="margin-left:8px;">Selesai</span><input type="date" class="stage-date-input" data-stage-end="' + stage.id + '" value="' + esc(stage.endDate || '') + '">';
+    html += '</div>';
+    html += '</div>';
+
+    if (expanded) {
+      html += '<div style="margin-top:10px; margin-left:34px; display:flex; flex-direction:column; gap:6px;">';
+      stage.tasks.forEach(function(task){ html += renderTaskRow(stage, task); });
+      html += '<div class="row" style="gap:6px; margin-top:4px;">';
+      html += '<input data-new-task="' + stage.id + '" placeholder="tambah task..." style="flex:1; height:30px; padding:6px 10px; font-size:13px;">';
+      html += '<button data-add-task="' + stage.id + '" style="height:30px; padding:0 12px; font-size:13px;">Tambah</button>';
+      html += '</div></div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function renderTaskRow(stage, task) {
+    var items = task.items || [];
+    var hasItems = items.length > 0;
+    var taskKey = stage.id + '|' + task.id;
+    var itemsExpanded = !!state.expandedTasks[taskKey];
+    var itemDoneCount = items.filter(function(it){ return it.done; }).length;
+    var html = '<div class="task-block">';
+    html += '<div class="task-row">';
+    if (hasItems) {
+      html += '<button class="icon-btn" data-toggle-task-items="' + taskKey + '" aria-label="' + (itemsExpanded ? 'Tutup item' : 'Buka item') + '" style="width:20px; height:20px; flex-shrink:0;">' + icon(itemsExpanded ? 'chevron-down' : 'chevron-right', { size: 12 }) + '</button>';
+    } else {
+      html += '<input type="checkbox" data-toggle-task="' + taskKey + '" ' + (task.done ? 'checked' : '') + '>';
+    }
+    html += '<input class="task-name ' + (taskProgress(task) >= 100 ? 'done' : '') + '" data-task-name="' + taskKey + '" value="' + esc(task.name) + '" style="border:none; background:transparent; padding:2px 0;">';
+    if (hasItems) {
+      html += '<span class="tiny muted mono" style="flex-shrink:0;">' + itemDoneCount + '/' + items.length + '</span>';
+    } else {
+      html += '<button class="icon-btn" data-toggle-task-items="' + taskKey + '" aria-label="Tambah item" title="Tambah item ke task ini" style="width:20px; height:20px;">' + icon('plus', { size: 12 }) + '</button>';
+    }
+    html += '<button class="icon-btn" data-delete-task="' + taskKey + '" aria-label="Hapus task" style="width:20px; height:20px;">' + icon('x', { size: 12 }) + '</button>';
+    html += '</div>';
+
+    if (itemsExpanded) {
+      html += '<div style="margin-left:28px; margin-top:4px; display:flex; flex-direction:column; gap:4px;">';
+      items.forEach(function(item){
+        var itemKey = stage.id + '|' + task.id + '|' + item.id;
+        html += '<div class="task-row">';
+        html += '<input type="checkbox" data-toggle-item="' + itemKey + '" ' + (item.done ? 'checked' : '') + '>';
+        html += '<input class="task-name ' + (item.done ? 'done' : '') + '" data-item-name="' + itemKey + '" value="' + esc(item.name) + '" style="border:none; background:transparent; padding:2px 0; font-size:13px;">';
+        html += '<button class="icon-btn" data-delete-item="' + itemKey + '" aria-label="Hapus item" style="width:20px; height:20px;">' + icon('x', { size: 11 }) + '</button>';
+        html += '</div>';
+      });
+      html += '<div class="row" style="gap:6px; margin-top:2px;">';
+      html += '<input data-new-item="' + taskKey + '" placeholder="tambah item..." style="flex:1; height:27px; padding:5px 9px; font-size:12.5px;">';
+      html += '<button data-add-item="' + taskKey + '" style="height:27px; padding:0 10px; font-size:12.5px;">Tambah</button>';
+      html += '</div></div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  // ---------- Event binding ----------
+  function bindEvents() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-tab]'), function(el){
+      el.onclick = function(){ state.activeTab = el.getAttribute('data-tab'); state.filterFrequency = 'Semua'; state.filterStatus = 'Semua'; state.filterAspect = 'Semua'; render(); };
+    });
+
+    // Sync controls
+    var btnSyncSettings = document.getElementById('btn-sync-settings');
+    if (btnSyncSettings) btnSyncSettings.onclick = function(){ state.showSetupModal = true; state.setupUrlInput = ''; render(); };
+    var btnRefreshSync = document.getElementById('btn-refresh-sync');
+    if (btnRefreshSync) btnRefreshSync.onclick = function(){ pullFromSheet(); };
+    var btnCloseModal = document.getElementById('btn-close-modal');
+    if (btnCloseModal) btnCloseModal.onclick = function(){ state.showSetupModal = false; render(); };
+    var modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay) modalOverlay.onclick = function(e){ if (e.target === modalOverlay) { state.showSetupModal = false; render(); } };
+    var setupUrlInput = document.getElementById('setup-url-input');
+    if (setupUrlInput) setupUrlInput.oninput = function(e){ state.setupUrlInput = e.target.value; };
+    var btnConnectSync = document.getElementById('btn-connect-sync');
+    if (btnConnectSync) btnConnectSync.onclick = function(){
+      var url = (state.setupUrlInput || '').trim();
+      if (!url) return;
+      if (url.indexOf('script.google.com') === -1) {
+        alert('URL tampaknya bukan URL Apps Script yang valid. Pastikan diakhiri /exec dan berasal dari script.google.com');
+        return;
+      }
+      setSyncUrl(url);
+      state.showSetupModal = false;
+      var hadLocalData = state.projects.length > 0;
+      if (hadLocalData) {
+        var pushFirst = confirm('Kamu sudah punya ' + state.projects.length + ' proyek tersimpan di browser ini. Klik OK untuk mengunggah data ini ke Sheets (jadi data awal bersama). Klik Batal untuk mengambil data dari Sheets (menimpa data lokal).');
+        if (pushFirst) { pushToSheet(); } else { pullFromSheet(); }
+      } else {
+        pullFromSheet();
+      }
+      startPolling();
+      render();
+    };
+    var btnDisconnectSync = document.getElementById('btn-disconnect-sync');
+    if (btnDisconnectSync) btnDisconnectSync.onclick = function(){
+      if (confirm('Putuskan koneksi ke Google Sheets? Data tetap tersimpan di browser ini, tapi tidak akan sinkron lagi.')) {
+        disconnectSync();
+        state.showSetupModal = false;
+        render();
+      }
+    };
+    var btnCopyScript = document.getElementById('btn-copy-script');
+    if (btnCopyScript) btnCopyScript.onclick = function(){
+      var text = APPS_SCRIPT_CODE;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function(){
+          btnCopyScript.innerHTML = icon('check', { size: 14, valign: '-2px', marginRight: 4 }) + 'Kode tersalin';
+          setTimeout(function(){ btnCopyScript.innerHTML = icon('copy', { size: 14, valign: '-2px', marginRight: 4 }) + 'Salin kode Apps Script'; }, 2000);
+        }).catch(function(){ promptFallbackCopy(text); });
+      } else {
+        promptFallbackCopy(text);
+      }
+    };
+
+    var btnNew = document.getElementById('btn-new');
+    if (btnNew) btnNew.onclick = function(){
+      var isRoutine = state.activeTab === 'rutin';
+      state.newIsRoutine = isRoutine;
+      state.newTemplateKey = isRoutine ? 'blank' : 'nonroutine';
+      var t = TEMPLATES[state.newTemplateKey];
+      state.newForm = { name: '', frequency: t.frequency, trackMode: t.trackMode, pic: '', deadline: '', startDate: todayStr(), status: 'Belum mulai', aspect: 'Umum' };
+      state.view = 'new'; render();
+    };
+    var btnRecap = document.getElementById('btn-recap');
+    if (btnRecap) btnRecap.onclick = function(){ state.view = 'recap'; render(); };
+    var btnExport = document.getElementById('btn-export');
+    if (btnExport) btnExport.onclick = exportData;
+    var btnImport = document.getElementById('btn-import');
+    var fileImport = document.getElementById('file-import');
+    if (btnImport && fileImport) {
+      btnImport.onclick = function(){ fileImport.click(); };
+      fileImport.onchange = function(e){ importData(e.target.files[0]); };
+    }
+    var btnRecover = document.getElementById('btn-recover');
+    if (btnRecover) btnRecover.onclick = recoverData;
+    var filterFreq = document.getElementById('filter-frequency');
+    if (filterFreq) filterFreq.onchange = function(e){ state.filterFrequency = e.target.value; render(); };
+    var filterStat = document.getElementById('filter-status');
+    if (filterStat) filterStat.onchange = function(e){ state.filterStatus = e.target.value; render(); };
+    var filterAspect = document.getElementById('filter-aspect');
+    if (filterAspect) filterAspect.onchange = function(e){ state.filterAspect = e.target.value; render(); };
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-open]'), function(el){
+      el.onclick = function(){ state.activeId = el.getAttribute('data-open'); state.view = 'detail'; state.showHistory = false; render(); };
+    });
+
+    // New view
+    var backBtn = document.getElementById('btn-back');
+    if (backBtn) backBtn.onclick = function(){ state.view = 'list'; render(); };
+
+    var recapYearSel = document.getElementById('recap-year');
+    if (recapYearSel) recapYearSel.onchange = function(e){ state.recapYear = Number(e.target.value); render(); };
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-routine]'), function(el){
+      el.onclick = function(){
+        var isRoutine = el.getAttribute('data-routine') === '1';
+        state.newIsRoutine = isRoutine;
+        state.newTemplateKey = isRoutine ? 'blank' : 'nonroutine';
+        var t = TEMPLATES[state.newTemplateKey];
+        state.newForm.frequency = t.frequency;
+        state.newForm.trackMode = t.trackMode;
+        render();
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-template]'), function(el){
+      el.onclick = function(){
+        var key = el.getAttribute('data-template');
+        state.newTemplateKey = key;
+        var t = TEMPLATES[key];
+        state.newForm.trackMode = t.trackMode;
+        render();
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-trackmode]'), function(el){
+      el.onclick = function(){ state.newForm.trackMode = el.getAttribute('data-trackmode'); render(); };
+    });
+    bindIfExists('new-name', 'oninput', function(e){ state.newForm.name = e.target.value; });
+    bindIfExists('new-frequency', 'onchange', function(e){ state.newForm.frequency = e.target.value; });
+    bindIfExists('new-start-date', 'onchange', function(e){ state.newForm.startDate = e.target.value; });
+    bindIfExists('new-deadline', 'onchange', function(e){ state.newForm.deadline = e.target.value; });
+    bindIfExists('new-pic', 'oninput', function(e){ state.newForm.pic = e.target.value; });
+    bindIfExists('new-status', 'onchange', function(e){ state.newForm.status = e.target.value; });
+    bindIfExists('new-aspect', 'onchange', function(e){ state.newForm.aspect = e.target.value; });
+    var btnCreate = document.getElementById('btn-create');
+    if (btnCreate) btnCreate.onclick = function(){
+      var nameEl = document.getElementById('new-name');
+      var name = (nameEl ? nameEl.value || '' : '').trim();
+      if (!name) { if (nameEl) nameEl.focus(); return; }
+      var project = cloneTemplate(state.newTemplateKey, state.newIsRoutine);
+      project.name = name;
+      project.pic = ((document.getElementById('new-pic') || {}).value || '').trim();
+      project.deadline = (document.getElementById('new-deadline') || {}).value || '';
+      var startDateEl = document.getElementById('new-start-date');
+      project.cycleStart = (startDateEl && startDateEl.value) ? startDateEl.value : todayStr();
+      project.createdAt = project.cycleStart;
+      var statusEl = document.getElementById('new-status');
+      if (statusEl) project.status = statusEl.value;
+      var aspectEl = document.getElementById('new-aspect');
+      if (aspectEl) project.aspect = aspectEl.value;
+      if (state.newIsRoutine) {
+        var freqEl = document.getElementById('new-frequency');
+        if (freqEl) project.frequency = freqEl.value;
+        project.trackMode = state.newForm.trackMode;
+      }
+      // Masukkan proyek ke state dulu
+      state.projects.push(project);
+      // Tandai sebagai pending local — pull tidak akan membuang proyek ini
+      // sampai push berhasil mengkonfirmasikannya ke Sheets
+      pendingLocalIds[project.id] = true;
+      // Simpan ke localStorage (tanpa render)
+      state.saveError = !saveProjects(state.projects);
+      // Push langsung ke Sheets (tanpa debounce) supaya proyek baru
+      // segera ada di Sheets sebelum pull polling berikutnya jalan
+      pushToSheet();
+      // Set view ke detail — SETELAH proyek ada di state
+      state.activeId = project.id;
+      state.view = 'detail';
+      // Paksa render eksplisit (abaikan pendingRender dan isEditingTextField)
+      pendingRender = false;
+      render();
+    };
+
+    // Detail view
+    bindIfExists('proj-name', 'oninput', function(e){ updateActiveProject('name', e.target.value, true); });
+    bindIfExists('proj-aspect', 'onchange', function(e){ updateActiveProject('aspect', e.target.value); });
+    bindIfExists('proj-status', 'onchange', function(e){ updateActiveProject('status', e.target.value); });
+    bindIfExists('proj-pic', 'oninput', function(e){ updateActiveProject('pic', e.target.value, true); });
+    bindIfExists('proj-start-date', 'onchange', function(e){ updateActiveProject('cycleStart', e.target.value); });
+    bindIfExists('proj-deadline', 'onchange', function(e){ updateActiveProject('deadline', e.target.value); });
+    bindIfExists('proj-notes', 'oninput', function(e){ updateActiveProject('notes', e.target.value, true); });
+
+    var askDelete = document.getElementById('btn-ask-delete');
+    if (askDelete) askDelete.onclick = function(){ state.confirmDeleteId = state.activeId; render(); };
+    var confirmDelete = document.getElementById('btn-confirm-delete');
+    if (confirmDelete) confirmDelete.onclick = function(){
+      state.projects = state.projects.filter(function(p){ return p.id !== state.activeId; });
+      state.view = 'list'; state.activeId = null; state.confirmDeleteId = null;
+      persist();
+    };
+    var cancelDelete = document.getElementById('btn-cancel-delete');
+    if (cancelDelete) cancelDelete.onclick = function(){ state.confirmDeleteId = null; render(); };
+
+    var toggleSimple = document.getElementById('btn-toggle-simple');
+    if (toggleSimple) toggleSimple.onclick = function(){
+      var project = findProject(state.activeId); if (!project) return;
+      project.simpleDone = !project.simpleDone;
+      persist();
+    };
+
+    var askNewCycle = document.getElementById('btn-ask-new-cycle');
+    if (askNewCycle) askNewCycle.onclick = function(){ state.confirmNewCycle = true; render(); };
+    var cancelNewCycle = document.getElementById('btn-cancel-new-cycle');
+    if (cancelNewCycle) cancelNewCycle.onclick = function(){ state.confirmNewCycle = false; render(); };
+    var confirmNewCycle = document.getElementById('btn-confirm-new-cycle');
+    if (confirmNewCycle) confirmNewCycle.onclick = function(){
+      var project = findProject(state.activeId); if (!project) return;
+      var finalProgress = projectProgress(project);
+      project.history = project.history || [];
+      project.history.push({ cycleStart: project.cycleStart, completedAt: new Date().toISOString(), finalProgress: finalProgress });
+      project.cycleStart = new Date().toISOString();
+      if (project.trackMode === 'simple') {
+        project.simpleDone = false;
+      } else {
+        project.stages.forEach(function(s){
+          s.tasks.forEach(function(t){
+            t.done = false;
+            (t.items || []).forEach(function(it){ it.done = false; });
+          });
+        });
+      }
+      project.status = 'Berjalan';
+      state.confirmNewCycle = false;
+      persist();
+    };
+
+    var toggleHistory = document.getElementById('btn-toggle-history');
+    if (toggleHistory) toggleHistory.onclick = function(){ state.showHistory = !state.showHistory; render(); };
+
+    var addStageBtn = document.getElementById('btn-add-stage');
+    if (addStageBtn) addStageBtn.onclick = function(){
+      var project = findProject(state.activeId); if (!project) return;
+      project.stages.push({ id: uid('stage'), name: 'Tahap baru', weight: 0, startDate: '', endDate: '', tasks: [] });
+      persist();
+    };
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-toggle-stage]'), function(el){
+      el.onclick = function(){
+        var sid = el.getAttribute('data-toggle-stage');
+        state.expandedStages[sid] = state.expandedStages[sid] === false ? true : false;
+        render();
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-stage-name]'), function(el){
+      el.oninput = function(){
+        var sid = el.getAttribute('data-stage-name');
+        var project = findProject(state.activeId); if (!project) return;
+        var stage = project.stages.filter(function(s){ return s.id === sid; })[0];
+        if (stage) { stage.name = el.value; persistSilent(); }
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-stage-weight]'), function(el){
+      el.onchange = function(){
+        var sid = el.getAttribute('data-stage-weight');
+        var project = findProject(state.activeId); if (!project) return;
+        var stage = project.stages.filter(function(s){ return s.id === sid; })[0];
+        if (stage) { stage.weight = Number(el.value || 0); persist(); }
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-stage-start]'), function(el){
+      el.onchange = function(){
+        var sid = el.getAttribute('data-stage-start');
+        var project = findProject(state.activeId); if (!project) return;
+        var stage = project.stages.filter(function(s){ return s.id === sid; })[0];
+        if (stage) { stage.startDate = el.value; persist(); }
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-stage-end]'), function(el){
+      el.onchange = function(){
+        var sid = el.getAttribute('data-stage-end');
+        var project = findProject(state.activeId); if (!project) return;
+        var stage = project.stages.filter(function(s){ return s.id === sid; })[0];
+        if (stage) { stage.endDate = el.value; persist(); }
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-delete-stage]'), function(el){
+      el.onclick = function(){
+        var sid = el.getAttribute('data-delete-stage');
+        var project = findProject(state.activeId); if (!project) return;
+        project.stages = project.stages.filter(function(s){ return s.id !== sid; });
+        persist();
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-toggle-task]'), function(el){
+      el.onchange = function(){
+        var parts = el.getAttribute('data-toggle-task').split('|');
+        var project = findProject(state.activeId); if (!project) return;
+        var stage = project.stages.filter(function(s){ return s.id === parts[0]; })[0];
+        var task = stage && stage.tasks.filter(function(t){ return t.id === parts[1]; })[0];
+        if (task) { task.done = !task.done; persist(); }
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-task-name]'), function(el){
+      el.oninput = function(){
+        var parts = el.getAttribute('data-task-name').split('|');
+        var project = findProject(state.activeId); if (!project) return;
+        var stage = project.stages.filter(function(s){ return s.id === parts[0]; })[0];
+        var task = stage && stage.tasks.filter(function(t){ return t.id === parts[1]; })[0];
+        if (task) { task.name = el.value; persistSilent(); }
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-delete-task]'), function(el){
+      el.onclick = function(){
+        var parts = el.getAttribute('data-delete-task').split('|');
+        var project = findProject(state.activeId); if (!project) return;
+        var stage = project.stages.filter(function(s){ return s.id === parts[0]; })[0];
+        if (stage) { stage.tasks = stage.tasks.filter(function(t){ return t.id !== parts[1]; }); persist(); }
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-add-task]'), function(el){
+      el.onclick = function(){ addTaskToStage(el.getAttribute('data-add-task')); };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-new-task]'), function(el){
+      el.onkeydown = function(e){ if (e.key === 'Enter') addTaskToStage(el.getAttribute('data-new-task')); };
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll('[data-toggle-task-items]'), function(el){
+      el.onclick = function(){
+        var key = el.getAttribute('data-toggle-task-items');
+        state.expandedTasks[key] = !state.expandedTasks[key];
+        render();
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-toggle-item]'), function(el){
+      el.onchange = function(){
+        var parts = el.getAttribute('data-toggle-item').split('|');
+        var project = findProject(state.activeId); if (!project) return;
+        var stage = project.stages.filter(function(s){ return s.id === parts[0]; })[0];
+        var task = stage && stage.tasks.filter(function(t){ return t.id === parts[1]; })[0];
+        var item = task && task.items.filter(function(it){ return it.id === parts[2]; })[0];
+        if (item) { item.done = !item.done; persist(); }
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-item-name]'), function(el){
+      el.oninput = function(){
+        var parts = el.getAttribute('data-item-name').split('|');
+        var project = findProject(state.activeId); if (!project) return;
+        var stage = project.stages.filter(function(s){ return s.id === parts[0]; })[0];
+        var task = stage && stage.tasks.filter(function(t){ return t.id === parts[1]; })[0];
+        var item = task && task.items.filter(function(it){ return it.id === parts[2]; })[0];
+        if (item) { item.name = el.value; persistSilent(); }
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-delete-item]'), function(el){
+      el.onclick = function(){
+        var parts = el.getAttribute('data-delete-item').split('|');
+        var project = findProject(state.activeId); if (!project) return;
+        var stage = project.stages.filter(function(s){ return s.id === parts[0]; })[0];
+        var task = stage && stage.tasks.filter(function(t){ return t.id === parts[1]; })[0];
+        if (task) { task.items = task.items.filter(function(it){ return it.id !== parts[2]; }); persist(); }
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-add-item]'), function(el){
+      el.onclick = function(){ addItemToTask(el.getAttribute('data-add-item')); };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-new-item]'), function(el){
+      el.onkeydown = function(e){ if (e.key === 'Enter') addItemToTask(el.getAttribute('data-new-item')); };
+    });
+  }
+
+  function addItemToTask(taskKey) {
+    var input = document.querySelector('[data-new-item="' + taskKey + '"]');
+    var name = input ? input.value.trim() : '';
+    if (!name) return;
+    var parts = taskKey.split('|');
+    var project = findProject(state.activeId); if (!project) return;
+    var stage = project.stages.filter(function(s){ return s.id === parts[0]; })[0];
+    var task = stage && stage.tasks.filter(function(t){ return t.id === parts[1]; })[0];
+    if (task) {
+      task.items = task.items || [];
+      task.items.push({ id: uid('item'), name: name, done: false });
+      state.expandedTasks[taskKey] = true;
+      persist();
+    }
+  }
+
+  function addTaskToStage(sid) {
+    var input = document.querySelector('[data-new-task="' + sid + '"]');
+    var name = input ? input.value.trim() : '';
+    if (!name) return;
+    var project = findProject(state.activeId); if (!project) return;
+    var stage = project.stages.filter(function(s){ return s.id === sid; })[0];
+    if (stage) { stage.tasks.push({ id: uid('task'), name: name, done: false, items: [] }); persist(); }
+  }
+
+  function updateActiveProject(field, value, silent) {
+    var project = findProject(state.activeId); if (!project) return;
+    if (project) { project[field] = value; if (silent) persistSilent(); else persist(); }
+  }
+
+  function bindIfExists(id, evt, handler) {
+    var el = document.getElementById(id);
+    if (el) el[evt] = handler;
+  }
+
+  // ---------- Export / Import ----------
+  function exportData() {
+    var blob = new Blob([JSON.stringify(state.projects, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var dateStr = new Date().toISOString().slice(0, 10);
+    a.href = url; a.download = 'tracker-enviro-' + dateStr + '.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function importData(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try {
+        var data = JSON.parse(e.target.result);
+        if (!Array.isArray(data)) throw new Error('format tidak valid');
+        data = data.map(safeNormalize).filter(Boolean);
+        var merge = confirm('Gabungkan dengan data yang sudah ada? Klik Batal untuk menimpa semua data saat ini.');
+        if (merge) {
+          var existingIds = state.projects.map(function(p){ return p.id; });
+          data.forEach(function(p){ if (existingIds.indexOf(p.id) === -1) state.projects.push(p); });
+        } else {
+          state.projects = data;
+        }
+        persist();
+        alert('Data berhasil diimpor.');
+      } catch (err) {
+        alert('Gagal membaca file. Pastikan ini adalah file export dari tracker ini.');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function recoverData() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(OLD_STORAGE_KEY);
+      if (!raw) { alert('Tidak ada data tersimpan ditemukan di browser ini.'); return; }
+
+      var parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) { alert('Format data tidak dikenali. Coba gunakan tombol Import dari file backup.'); return; }
+
+      // Normalize satu per satu, kumpulkan yang berhasil dan yang gagal
+      var recovered = [], failed = [];
+      parsed.forEach(function(p, i){
+        try {
+          recovered.push(normalizeProject(p));
+        } catch(e) {
+          failed.push('Proyek #' + (i+1) + ' (' + (p && p.name ? p.name : 'tanpa nama') + '): ' + e.message);
+        }
+      });
+
+      if (recovered.length === 0) {
+        alert('Tidak ada proyek yang berhasil dipulihkan.\n\nDetail error:\n' + failed.join('\n'));
+        return;
+      }
+
+      var msg = 'Ditemukan ' + parsed.length + ' proyek di penyimpanan browser.\n' +
+                'Berhasil dipulihkan: ' + recovered.length + ' proyek.\n' +
+                (failed.length ? 'Gagal: ' + failed.length + ' proyek.\n\n' + failed.join('\n') + '\n\n' : '\n') +
+                'Ganti data yang sedang tampil dengan ' + recovered.length + ' proyek yang dipulihkan?';
+
+      if (confirm(msg)) {
+        // Gabungkan: proyek yang ada + proyek pulih yang belum ada
+        var existingIds = state.projects.map(function(p){ return p.id; });
+        var toAdd = recovered.filter(function(p){ return existingIds.indexOf(p.id) === -1; });
+        state.projects = state.projects.concat(toAdd);
+        persist();
+        alert('Selesai. ' + toAdd.length + ' proyek berhasil dipulihkan dan ditambahkan.');
+        render();
+      }
+    } catch(e) {
+      alert('Gagal membaca data dari browser: ' + e.message + '\n\nCoba gunakan tombol Import dari file backup .json jika ada.');
+    }
+  }
+
+  render();
+  if (getSyncUrl()) { pullFromSheet({ silent: true }); startPolling(); }
+})();
+</script>
+</body>
+</html>
