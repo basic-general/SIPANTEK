@@ -722,9 +722,9 @@ function doPost(e) {
     isPushing = true;
     state.syncStatus = 'syncing';
     var snapshot = JSON.stringify({ projects: state.projects });
-    // mode: 'no-cors' — browser tidak blokir karena Apps Script tidak kirim CORS header.
-    // Response-nya opaque (tidak bisa dibaca), tapi POST TETAP TERKIRIM dan tersimpan di Sheets.
-    // Kita konfirmasi dengan GET ~1.5 detik sesudahnya.
+    // Pakai no-cors karena Apps Script tidak kirim header CORS.
+    // Response-nya opaque (tidak bisa dibaca) tapi POST TETAP TERKIRIM dan tersimpan di Sheets.
+    // Konfirmasi dilakukan lewat GET sesudahnya.
     fetch(url, {
       method: 'POST',
       mode: 'no-cors',
@@ -732,13 +732,17 @@ function doPost(e) {
       body: snapshot
     })
       .then(function() {
-        // POST terkirim (response opaque, tidak bisa dibaca — normal untuk no-cors).
-        // Tunggu sebentar supaya Apps Script selesai nulis ke Sheets, lalu GET untuk konfirmasi.
+        // POST terkirim. Tunggu Apps Script selesai nulis, lalu GET untuk konfirmasi.
         lastPushAt = Date.now();
         return new Promise(function(resolve){ setTimeout(resolve, 1500); });
       })
       .then(function() {
         isPushing = false;
+        state.syncStatus = 'synced';
+        state.lastSyncAt = new Date().toISOString();
+        state.syncErrorMsg = '';
+        safeRender();
+        // Pull sesudah push untuk sinkronisasi dua arah
         pullFromSheet({ silent: true });
       })
       .catch(function(err){
@@ -1761,38 +1765,48 @@ function doPost(e) {
       var raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(OLD_STORAGE_KEY);
       if (!raw) { alert('Tidak ada data tersimpan ditemukan di browser ini.'); return; }
 
-      var parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) { alert('Format data tidak dikenali. Coba gunakan tombol Import dari file backup.'); return; }
-
-      // Normalize satu per satu, kumpulkan yang berhasil dan yang gagal
-      var recovered = [], failed = [];
-      parsed.forEach(function(p, i){
-        try {
-          recovered.push(normalizeProject(p));
-        } catch(e) {
-          failed.push('Proyek #' + (i+1) + ' (' + (p && p.name ? p.name : 'tanpa nama') + '): ' + e.message);
-        }
-      });
-
-      if (recovered.length === 0) {
-        alert('Tidak ada proyek yang berhasil dipulihkan.\n\nDetail error:\n' + failed.join('\n'));
+      var parsed;
+      try { parsed = JSON.parse(raw); } catch(e) {
+        alert('Data di browser rusak / tidak bisa dibaca.\n\nError: ' + e.message);
+        return;
+      }
+      if (!Array.isArray(parsed)) {
+        alert('Format data tidak dikenali (bukan array). Coba gunakan tombol Import dari file backup .json.');
+        return;
+      }
+      if (parsed.length === 0) {
+        alert('Data di browser kosong (0 proyek).');
         return;
       }
 
-      var msg = 'Ditemukan ' + parsed.length + ' proyek di penyimpanan browser.\n' +
-                'Berhasil dipulihkan: ' + recovered.length + ' proyek.\n' +
-                (failed.length ? 'Gagal: ' + failed.length + ' proyek.\n\n' + failed.join('\n') + '\n\n' : '\n') +
-                'Ganti data yang sedang tampil dengan ' + recovered.length + ' proyek yang dipulihkan?';
+      // Normalize satu per satu
+      var recovered = [], failed = [];
+      parsed.forEach(function(p, i){
+        try { recovered.push(normalizeProject(p)); }
+        catch(e) { failed.push('Proyek #' + (i+1) + ' (' + (p && p.name ? p.name : 'tanpa nama') + '): ' + e.message); }
+      });
 
-      if (confirm(msg)) {
-        // Gabungkan: proyek yang ada + proyek pulih yang belum ada
-        var existingIds = state.projects.map(function(p){ return p.id; });
-        var toAdd = recovered.filter(function(p){ return existingIds.indexOf(p.id) === -1; });
-        state.projects = state.projects.concat(toAdd);
-        persist();
-        alert('Selesai. ' + toAdd.length + ' proyek berhasil dipulihkan dan ditambahkan.');
-        render();
+      if (recovered.length === 0) {
+        alert('Semua ' + parsed.length + ' proyek gagal dipulihkan.\n\nDetail:\n' + failed.join('\n'));
+        return;
       }
+
+      var msg = 'Ditemukan ' + recovered.length + ' proyek di penyimpanan browser ini' +
+                (failed.length ? ' (' + failed.length + ' gagal dibaca)' : '') + '.\n\n' +
+                'Pilih tindakan:\n' +
+                '• OK = Ganti semua data yang tampil sekarang dengan ' + recovered.length + ' proyek dari browser ini\n' +
+                '• Batal = Batalkan pulihkan data';
+
+      if (!confirm(msg)) return;
+
+      // Replace penuh dengan data dari localStorage
+      state.projects = recovered;
+      saveProjects(state.projects);
+      // Push ke Sheets supaya semua user dapat data yang sama
+      schedulePush();
+      render();
+      alert('Selesai. ' + recovered.length + ' proyek berhasil dipulihkan.' +
+            (failed.length ? '\n\n' + failed.length + ' proyek tidak berhasil dibaca:\n' + failed.join('\n') : ''));
     } catch(e) {
       alert('Gagal membaca data dari browser: ' + e.message + '\n\nCoba gunakan tombol Import dari file backup .json jika ada.');
     }
