@@ -210,11 +210,14 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
  * 6. Saat diminta otorisasi, klik Authorize access, pilih akun Google kamu,
  *    klik Advanced > Go to (nama project) > Allow.
  * 7. Copy "Web app URL" yang muncul (diakhiri /exec).
- * 8. Paste URL itu ke file HTML tracker, di bagian SYNC_URL.
+ * 8. Paste URL itu ke SIPANTEK di bagian setup sinkronisasi.
  *
- * Catatan: setiap kali kamu mengubah kode ini, perlu Deploy > Manage deployments
- * > klik ikon pensil > Version: New version > Deploy lagi, supaya URL yang sama
- * memakai kode terbaru.
+ * PENTING: setiap kali mengubah kode ini, Deploy > Manage deployments
+ * > ikon pensil > Version: New version > Deploy, agar perubahan aktif.
+ *
+ * Catatan teknis: semua operasi (baca & tulis) dilakukan via GET request
+ * karena Apps Script Web App tidak mendukung CORS untuk POST dari browser.
+ * Data tulis dikirim via query parameter ?action=save&d=<JSON>.
  */
 
 var SHEET_NAME = 'data';
@@ -235,11 +238,8 @@ function readProjects_() {
   var data = sheet.getDataRange().getValues();
   for (var i = 1; i < data.length; i++) {
     if (data[i][0] === 'projects') {
-      try {
-        return JSON.parse(data[i][1] || '[]');
-      } catch (e) {
-        return [];
-      }
+      try { return JSON.parse(data[i][1] || '[]'); }
+      catch (e) { return []; }
     }
   }
   return [];
@@ -250,10 +250,7 @@ function writeProjects_(projects) {
   var data = sheet.getDataRange().getValues();
   var rowIndex = -1;
   for (var i = 1; i < data.length; i++) {
-    if (data[i][0] === 'projects') {
-      rowIndex = i + 1;
-      break;
-    }
+    if (data[i][0] === 'projects') { rowIndex = i + 1; break; }
   }
   var json = JSON.stringify(projects);
   if (rowIndex === -1) {
@@ -266,16 +263,33 @@ function writeProjects_(projects) {
 }
 
 function jsonOut_(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
 function doGet(e) {
   var lock = LockService.getScriptLock();
-  lock.waitLock(10000);
+  lock.waitLock(15000);
   try {
+    var action = (e.parameter && e.parameter.action) || 'load';
+
+    if (action === 'save') {
+      // Data dikirim via query param ?action=save&d=<JSON>
+      var raw = e.parameter.d || '';
+      if (!raw) return jsonOut_({ ok: false, error: 'Data kosong' });
+      var body = JSON.parse(raw);
+      if (!body || !Array.isArray(body.projects)) {
+        return jsonOut_({ ok: false, error: 'Format data tidak valid' });
+      }
+      writeProjects_(body.projects);
+      return jsonOut_({ ok: true, action: 'saved', count: body.projects.length });
+    }
+
+    // action === 'load' (default)
     var projects = readProjects_();
-    return jsonOut_({ ok: true, projects: projects });
+    return jsonOut_({ ok: true, action: 'loaded', projects: projects });
+
   } catch (err) {
     return jsonOut_({ ok: false, error: String(err) });
   } finally {
@@ -284,8 +298,9 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  // Fallback untuk backward compatibility — arahkan ke logika yang sama
   var lock = LockService.getScriptLock();
-  lock.waitLock(10000);
+  lock.waitLock(15000);
   try {
     var body = JSON.parse(e.postData.contents);
     if (!body || !Array.isArray(body.projects)) {
@@ -721,29 +736,51 @@ function doPost(e) {
     if (!url) return;
     isPushing = true;
     state.syncStatus = 'syncing';
-    var snapshot = JSON.stringify({ projects: state.projects });
-    // Pakai no-cors karena Apps Script tidak kirim header CORS.
-    // Response-nya opaque (tidak bisa dibaca) tapi POST TETAP TERKIRIM dan tersimpan di Sheets.
-    // Konfirmasi dilakukan lewat GET sesudahnya.
-    fetch(url, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: snapshot
-    })
-      .then(function() {
-        // POST terkirim. Tunggu Apps Script selesai nulis, lalu GET untuk konfirmasi.
-        lastPushAt = Date.now();
-        return new Promise(function(resolve){ setTimeout(resolve, 1500); });
-      })
-      .then(function() {
+    // Kirim via GET ?action=save&d=<JSON> karena Apps Script Web App
+    // tidak mendukung CORS untuk POST dari browser — GET selalu bisa dibaca.
+    var payload = JSON.stringify({ projects: state.projects });
+    var encoded = encodeURIComponent(payload);
+    // Batas aman URL ~7500 karakter (Apps Script lebih toleran dari server biasa)
+    if (encoded.length > 7500) {
+      // Data terlalu besar untuk GET — fallback ke POST no-cors
+      // (data terkirim tapi response tidak terbaca, lanjutkan dengan pull untuk konfirmasi)
+      fetch(url, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: payload
+      }).then(function(){
         isPushing = false;
+        lastPushAt = Date.now();
         state.syncStatus = 'synced';
         state.lastSyncAt = new Date().toISOString();
         state.syncErrorMsg = '';
         safeRender();
-        // Pull sesudah push untuk sinkronisasi dua arah
-        pullFromSheet({ silent: true });
+        setTimeout(function(){ pullFromSheet({ silent: true }); }, 2000);
+      }).catch(function(err){
+        isPushing = false;
+        state.syncStatus = 'error';
+        state.syncErrorMsg = String(err.message || err);
+        safeRender();
+      });
+      return;
+    }
+    var saveUrl = url
+      + (url.indexOf('?') >= 0 ? '&' : '?')
+      + 'action=save&d=' + encoded
+      + '&_cb=' + Date.now();
+    fetch(saveUrl, { method: 'GET' })
+      .then(function(res){ return res.json(); })
+      .then(function(data){
+        if (!data || data.ok !== true) throw new Error((data && data.error) || 'Gagal menyimpan data');
+        isPushing = false;
+        lastPushAt = Date.now();
+        state.syncStatus = 'synced';
+        state.lastSyncAt = new Date().toISOString();
+        state.syncErrorMsg = '';
+        safeRender();
+        // Pull sesudah push untuk konfirmasi dan ambil data terbaru dari user lain
+        setTimeout(function(){ pullFromSheet({ silent: true }); }, 500);
       })
       .catch(function(err){
         isPushing = false;
