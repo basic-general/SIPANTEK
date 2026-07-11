@@ -656,26 +656,29 @@ function doPost(e) {
     } catch(e) { return ''; }
   }
 
-  // ---------- Sync with Google Sheets (Apps Script Web App) ----------
-  var SYNC_URL_KEY = 'enviro-tracker:sync-url';
-  var POLL_INTERVAL_MS = 10000;
-  var pollTimer = null;
+  // ---------- Sync dengan GitHub Gist ----------
+  var GIST_ID_KEY   = 'sipantek:gist-id';
+  var GIST_PAT_KEY  = 'sipantek:gist-pat';
+  var GIST_FILENAME = 'sipantek-data.json';
+  var POLL_INTERVAL_MS  = 30000; // 30 detik — hemat rate limit, cukup responsif
+  var pollTimer         = null;
   var pushDebounceTimer = null;
-  var isPushing = false;
-  var lastPushAt = 0;
-  var lastPullAt = 0;
-  // ID proyek yang dibuat lokal dan belum dikonfirmasi masuk ke Sheets
-  var pendingLocalIds = {};
+  var isPushing         = false;
+  var lastPushAt        = 0;
+  var lastPullAt        = 0;
+  var pendingLocalIds   = {};
 
-  function getSyncUrl() {
-    try { return localStorage.getItem(SYNC_URL_KEY) || ''; } catch (e) { return ''; }
+  function getGistId()  { try { return localStorage.getItem(GIST_ID_KEY)  || ''; } catch(e){ return ''; } }
+  function getGistPat() { try { return localStorage.getItem(GIST_PAT_KEY) || ''; } catch(e){ return ''; } }
+  function setGistCreds(id, pat) {
+    try { localStorage.setItem(GIST_ID_KEY, id); localStorage.setItem(GIST_PAT_KEY, pat); } catch(e){}
   }
-  function setSyncUrl(url) {
-    try { localStorage.setItem(SYNC_URL_KEY, url); } catch (e) {}
+  function clearGistCreds() {
+    try { localStorage.removeItem(GIST_ID_KEY); localStorage.removeItem(GIST_PAT_KEY); } catch(e){}
   }
-  function clearSyncUrl() {
-    try { localStorage.removeItem(SYNC_URL_KEY); } catch (e) {}
-  }
+  function isConnected() { return !!(getGistId() && getGistPat()); }
+  // Alias agar kode lain yang masih pakai getSyncUrl() tidak error
+  function getSyncUrl() { return isConnected() ? 'gist:' + getGistId() : ''; }
 
   // Render aman dari async callback — tunda jika user sedang mengetik
   function safeRender() {
@@ -685,38 +688,38 @@ function doPost(e) {
 
   function pullFromSheet(opts) {
     opts = opts || {};
-    var url = getSyncUrl();
-    if (!url) return;
-    if (isPushing) return; // push sedang jalan, skip pull ini
-    var bustUrl = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cb=' + Date.now();
-    fetch(bustUrl, { method: 'GET' })
-      .then(function(res){ return res.json(); })
+    if (!isConnected()) return;
+    if (isPushing) return;
+    fetch('https://api.github.com/gists/' + getGistId(), {
+      headers: {
+        'Authorization': 'Bearer ' + getGistPat(),
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      }
+    })
+      .then(function(res){
+        if (!res.ok) throw new Error('GitHub API ' + res.status);
+        return res.json();
+      })
       .then(function(data){
-        if (!data || data.ok !== true) throw new Error((data && data.error) || 'Gagal mengambil data');
-        if (isPushing) return; // push mulai saat kita fetch, batalkan apply
-        var fromSheet = (data.projects || []).map(safeNormalize).filter(Boolean);
-        var sheetIds = {};
-        fromSheet.forEach(function(p){ sheetIds[p.id] = true; });
-
-        // Proyek yang perlu dipertahankan dari state lokal:
-        // 1. Proyek yang sedang dibuka user (activeId) — apapun kondisinya,
-        //    agar tidak tiba-tiba hilang dari layar
-        // 2. Proyek yang masih pending (baru dibuat, belum dikonfirmasi di Sheets)
-        // Kalau proyek pending sudah ada di Sheets, hapus dari pending list
-        Object.keys(pendingLocalIds).forEach(function(id){
-          if (sheetIds[id]) delete pendingLocalIds[id];
+        if (isPushing) return;
+        var file = data.files && data.files[GIST_FILENAME];
+        if (!file) throw new Error('File tidak ditemukan di Gist');
+        var parsed = JSON.parse(file.content || '{"projects":[]}');
+        var fromGist = (parsed.projects || []).map(safeNormalize).filter(Boolean);
+        var gistIds = {};
+        fromGist.forEach(function(p){ gistIds[p.id] = true; });
+        // Hapus dari pending kalau sudah masuk Gist
+        Object.keys(pendingLocalIds).forEach(function(pid){
+          if (gistIds[pid]) delete pendingLocalIds[pid];
         });
-
-        var localProjects = state.projects.filter(function(p){
-          return pendingLocalIds[p.id] || p.id === state.activeId;
+        // Pertahankan proyek pending lokal dan proyek yang sedang dibuka
+        state.projects.forEach(function(p){
+          if ((pendingLocalIds[p.id] || p.id === state.activeId) && !gistIds[p.id]) {
+            fromGist.push(p);
+          }
         });
-
-        // Mulai dari data Sheets, tambahkan proyek lokal yang belum ada di sana
-        localProjects.forEach(function(p){
-          if (!sheetIds[p.id]) fromSheet.push(p);
-        });
-
-        state.projects = fromSheet;
+        state.projects = fromGist;
         saveProjects(state.projects);
         lastPullAt = Date.now();
         state.syncStatus = 'synced';
@@ -732,55 +735,32 @@ function doPost(e) {
   }
 
   function pushToSheet() {
-    var url = getSyncUrl();
-    if (!url) return;
+    if (!isConnected()) return;
     isPushing = true;
     state.syncStatus = 'syncing';
-    // Kirim via GET ?action=save&d=<JSON> karena Apps Script Web App
-    // tidak mendukung CORS untuk POST dari browser — GET selalu bisa dibaca.
-    var payload = JSON.stringify({ projects: state.projects });
-    var encoded = encodeURIComponent(payload);
-    // Batas aman URL ~7500 karakter (Apps Script lebih toleran dari server biasa)
-    if (encoded.length > 7500) {
-      // Data terlalu besar untuk GET — fallback ke POST no-cors
-      // (data terkirim tapi response tidak terbaca, lanjutkan dengan pull untuk konfirmasi)
-      fetch(url, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: payload
-      }).then(function(){
+    var payload = JSON.stringify({ projects: state.projects, updatedAt: new Date().toISOString() }, null, 2);
+    fetch('https://api.github.com/gists/' + getGistId(), {
+      method: 'PATCH',
+      headers: {
+        'Authorization': 'Bearer ' + getGistPat(),
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ files: { 'sipantek-data.json': { content: payload } } })
+    })
+      .then(function(res){
+        if (!res.ok) throw new Error('GitHub API ' + res.status);
+        return res.json();
+      })
+      .then(function(){
         isPushing = false;
         lastPushAt = Date.now();
         state.syncStatus = 'synced';
         state.lastSyncAt = new Date().toISOString();
         state.syncErrorMsg = '';
         safeRender();
-        setTimeout(function(){ pullFromSheet({ silent: true }); }, 2000);
-      }).catch(function(err){
-        isPushing = false;
-        state.syncStatus = 'error';
-        state.syncErrorMsg = String(err.message || err);
-        safeRender();
-      });
-      return;
-    }
-    var saveUrl = url
-      + (url.indexOf('?') >= 0 ? '&' : '?')
-      + 'action=save&d=' + encoded
-      + '&_cb=' + Date.now();
-    fetch(saveUrl, { method: 'GET' })
-      .then(function(res){ return res.json(); })
-      .then(function(data){
-        if (!data || data.ok !== true) throw new Error((data && data.error) || 'Gagal menyimpan data');
-        isPushing = false;
-        lastPushAt = Date.now();
-        state.syncStatus = 'synced';
-        state.lastSyncAt = new Date().toISOString();
-        state.syncErrorMsg = '';
-        safeRender();
-        // Pull sesudah push untuk konfirmasi dan ambil data terbaru dari user lain
-        setTimeout(function(){ pullFromSheet({ silent: true }); }, 500);
+        setTimeout(function(){ pullFromSheet({ silent: true }); }, 1000);
       })
       .catch(function(err){
         isPushing = false;
@@ -791,22 +771,24 @@ function doPost(e) {
   }
 
   function schedulePush() {
-    if (!getSyncUrl()) return;
+    if (!isConnected()) return;
     clearTimeout(pushDebounceTimer);
     pushDebounceTimer = setTimeout(pushToSheet, 800);
   }
 
   function startPolling() {
     clearInterval(pollTimer);
-    if (!getSyncUrl()) return;
+    if (!isConnected()) return;
     pollTimer = setInterval(function(){ pullFromSheet({ silent: true }); }, POLL_INTERVAL_MS);
   }
 
   function disconnectSync() {
-    clearSyncUrl();
     clearInterval(pollTimer);
+    clearTimeout(pushDebounceTimer);
+    clearGistCreds();
     state.syncStatus = 'offline';
-    render();
+    state.lastSyncAt = null;
+    state.syncErrorMsg = '';
   }
 
   var state = {
@@ -826,11 +808,12 @@ function doPost(e) {
     saveError: false,
     expandedStages: {},
     expandedTasks: {},
-    syncStatus: getSyncUrl() ? 'syncing' : 'offline',
+    syncStatus: isConnected() ? 'syncing' : 'offline',
     lastSyncAt: null,
     syncErrorMsg: '',
     showSetupModal: false,
-    setupUrlInput: '',
+    setupGistId: '',
+    setupGistPat: '',
     recapYear: new Date().getFullYear()
   };
 
@@ -937,39 +920,37 @@ function doPost(e) {
       html += '<button class="ghost" id="btn-refresh-sync" title="Tarik data terbaru">' + icon('refresh', { valign: '-3px' }) + '</button>';
       html += '<button class="ghost" id="btn-sync-settings" title="Pengaturan sinkron">' + icon('settings', { valign: '-3px' }) + '</button>';
     } else {
-      html += '<button class="ghost" id="btn-sync-settings">' + icon('cloud', { marginRight: 4 }) + 'Hubungkan ke Sheets</button>';
+      html += '<button class="ghost" id="btn-sync-settings">' + icon('cloud', { marginRight: 4 }) + 'Hubungkan ke Gist</button>';
     }
     return html;
   }
 
   function renderSetupModal() {
-    var hasUrl = !!getSyncUrl();
+    var connected = isConnected();
     var html = '<div class="modal-overlay" id="modal-overlay">';
     html += '<div class="modal-box">';
-    html += '<div class="between" style="margin-bottom:1rem;"><h3 style="font-size:17px;">Sinkron ke Google Sheets</h3><button class="icon-btn" id="btn-close-modal" aria-label="Tutup">' + icon('x', { valign: '-3px' }) + '</button></div>';
+    html += '<div class="between" style="margin-bottom:1rem;"><h3 style="font-size:17px;">Sinkron lewat GitHub Gist</h3><button class="icon-btn" id="btn-close-modal" aria-label="Tutup">' + icon('x', { valign: '-3px' }) + '</button></div>';
 
-    if (hasUrl) {
-      html += '<p class="small muted" style="margin-bottom:12px;">Tracker ini sedang terhubung ke Google Sheets. Semua orang yang membuka file HTML ini dengan URL yang sama akan melihat data yang sama.</p>';
-      html += '<div class="card" style="background:var(--bg-well); border:none; font-size:12.5px; word-break:break-all; margin-bottom:14px;">' + esc(getSyncUrl()) + '</div>';
-      html += '<div class="row" style="gap:8px;">';
+    if (connected) {
+      html += '<p class="small muted" style="margin-bottom:12px;">Terhubung ke GitHub Gist. Semua user yang memakai Gist ID dan PAT yang sama akan melihat data yang sama secara real-time.</p>';
+      html += '<div class="card" style="background:var(--bg-well); border:none; font-size:12.5px; margin-bottom:14px;">';
+      html += '<div class="tiny muted" style="margin-bottom:2px;">Gist ID</div>';
+      html += '<div style="font-family:var(--font-mono); word-break:break-all;">' + esc(getGistId()) + '</div>';
+      html += '</div>';
       html += '<button class="ghost small" id="btn-disconnect-sync" style="color:var(--text-danger);">Putuskan koneksi</button>';
-      html += '</div>';
     } else {
-      html += '<p class="small muted" style="margin-bottom:14px;">Hubungkan tracker ini ke Google Sheets supaya data bisa dipakai bersama tim. Butuh setup sekali di Google Sheets (sekitar 5 menit).</p>';
-
+      html += '<p class="small muted" style="margin-bottom:14px;">Hubungkan ke GitHub Gist agar data bisa dipakai bersama tim secara real-time. Setup sekitar 3 menit.</p>';
       html += '<div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">';
-      html += stepRow('1', 'Buat Google Sheet baru (kosong, nama bebas).');
-      html += stepRow('2', 'Buka menu <strong>Extensions &gt; Apps Script</strong>.');
-      html += stepRow('3', 'Hapus kode default, lalu tempel kode backend yang sudah disiapkan (lihat tombol di bawah untuk salin kode).');
-      html += stepRow('4', '<strong>Deploy &gt; New deployment</strong> &rarr; pilih tipe <strong>Web app</strong> &rarr; Execute as: <strong>Me</strong> &rarr; Who has access: <strong>Anyone with the link</strong> &rarr; Deploy.');
-      html += stepRow('5', 'Otorisasi akses saat diminta (klik akun Google kamu &rarr; Advanced &rarr; lanjutkan).');
-      html += stepRow('6', 'Salin URL Web App yang muncul (diakhiri <code>/exec</code>), lalu tempel di bawah ini.');
+      html += stepRow('1', 'Login ke <strong>github.com</strong>, klik foto profil → <strong>Settings</strong> → <strong>Developer settings</strong> → <strong>Personal access tokens</strong> → <strong>Tokens (classic)</strong> → <strong>Generate new token (classic)</strong>.');
+      html += stepRow('2', 'Beri nama token (bebas), centang scope <strong>gist</strong>, klik <strong>Generate token</strong>. Salin token yang muncul (hanya tampil sekali).');
+      html += stepRow('3', 'Buka <strong>gist.github.com</strong>, klik <strong>+</strong> (New gist). Isi nama file: <code>sipantek-data.json</code>, isi konten: <code>{}</code>, pilih <strong>Create secret gist</strong>.');
+      html += stepRow('4', 'Salin <strong>Gist ID</strong> dari URL: <code>gist.github.com/username/<strong>GIST_ID_INI</strong></code>.');
+      html += stepRow('5', 'Paste Gist ID dan Personal Access Token di bawah, lalu klik Hubungkan.');
       html += '</div>';
-
-      html += '<button class="ghost small" id="btn-copy-script" style="margin-bottom:14px;">' + icon('copy', { size: 14, valign: '-2px', marginRight: 4 }) + 'Salin kode Apps Script</button>';
-
-      html += '<label class="small muted" style="display:block; margin-bottom:6px;">URL Web App (diakhiri /exec)</label>';
-      html += '<input id="setup-url-input" placeholder="https://script.google.com/macros/s/.../exec" value="' + esc(state.setupUrlInput) + '" style="margin-bottom:10px;">';
+      html += '<div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">';
+      html += '<div><label class="small muted" style="display:block; margin-bottom:4px;">Gist ID</label><input id="setup-gist-id" placeholder="abc123def456..." value="' + esc(state.setupGistId || '') + '"></div>';
+      html += '<div><label class="small muted" style="display:block; margin-bottom:4px;">Personal Access Token</label><input id="setup-gist-pat" type="password" placeholder="ghp_xxxxxxxxxxxx" value="' + esc(state.setupGistPat || '') + '"></div>';
+      html += '</div>';
       html += '<button class="primary" id="btn-connect-sync">Hubungkan</button>';
     }
 
@@ -1380,30 +1361,32 @@ function doPost(e) {
       el.onclick = function(){ state.activeTab = el.getAttribute('data-tab'); state.filterFrequency = 'Semua'; state.filterStatus = 'Semua'; state.filterAspect = 'Semua'; render(); };
     });
 
-    // Sync controls
+    // Sync modal handlers
     var btnSyncSettings = document.getElementById('btn-sync-settings');
-    if (btnSyncSettings) btnSyncSettings.onclick = function(){ state.showSetupModal = true; state.setupUrlInput = ''; render(); };
+    if (btnSyncSettings) btnSyncSettings.onclick = function(){ state.showSetupModal = true; render(); };
     var btnRefreshSync = document.getElementById('btn-refresh-sync');
     if (btnRefreshSync) btnRefreshSync.onclick = function(){ pullFromSheet(); };
     var btnCloseModal = document.getElementById('btn-close-modal');
     if (btnCloseModal) btnCloseModal.onclick = function(){ state.showSetupModal = false; render(); };
     var modalOverlay = document.getElementById('modal-overlay');
     if (modalOverlay) modalOverlay.onclick = function(e){ if (e.target === modalOverlay) { state.showSetupModal = false; render(); } };
-    var setupUrlInput = document.getElementById('setup-url-input');
-    if (setupUrlInput) setupUrlInput.oninput = function(e){ state.setupUrlInput = e.target.value; };
+    var setupGistIdEl = document.getElementById('setup-gist-id');
+    if (setupGistIdEl) setupGistIdEl.oninput = function(e){ state.setupGistId = e.target.value; };
+    var setupGistPatEl = document.getElementById('setup-gist-pat');
+    if (setupGistPatEl) setupGistPatEl.oninput = function(e){ state.setupGistPat = e.target.value; };
     var btnConnectSync = document.getElementById('btn-connect-sync');
     if (btnConnectSync) btnConnectSync.onclick = function(){
-      var url = (state.setupUrlInput || '').trim();
-      if (!url) return;
-      if (url.indexOf('script.google.com') === -1) {
-        alert('URL tampaknya bukan URL Apps Script yang valid. Pastikan diakhiri /exec dan berasal dari script.google.com');
-        return;
+      var id  = (state.setupGistId  || '').trim();
+      var pat = (state.setupGistPat || '').trim();
+      if (!id || !pat) { alert('Mohon isi Gist ID dan Personal Access Token.'); return; }
+      if (pat.indexOf('ghp_') !== 0 && pat.indexOf('github_pat_') !== 0) {
+        if (!confirm('Token tidak dimulai dengan "ghp_" atau "github_pat_" — yakin sudah benar?')) return;
       }
-      setSyncUrl(url);
+      setGistCreds(id, pat);
       state.showSetupModal = false;
-      var hadLocalData = state.projects.length > 0;
-      if (hadLocalData) {
-        var pushFirst = confirm('Kamu sudah punya ' + state.projects.length + ' proyek tersimpan di browser ini. Klik OK untuk mengunggah data ini ke Sheets (jadi data awal bersama). Klik Batal untuk mengambil data dari Sheets (menimpa data lokal).');
+      var hadData = state.projects.length > 0;
+      if (hadData) {
+        var pushFirst = confirm('Kamu sudah punya ' + state.projects.length + ' proyek di browser ini.\n\nKlik OK → unggah data lokal ke Gist (jadikan data awal bersama).\nKlik Batal → ambil data dari Gist (timpa data lokal).');
         if (pushFirst) { pushToSheet(); } else { pullFromSheet(); }
       } else {
         pullFromSheet();
@@ -1413,22 +1396,10 @@ function doPost(e) {
     };
     var btnDisconnectSync = document.getElementById('btn-disconnect-sync');
     if (btnDisconnectSync) btnDisconnectSync.onclick = function(){
-      if (confirm('Putuskan koneksi ke Google Sheets? Data tetap tersimpan di browser ini, tapi tidak akan sinkron lagi.')) {
+      if (confirm('Putuskan koneksi ke GitHub Gist? Data tetap tersimpan di browser ini, tapi tidak akan sinkron lagi.')) {
         disconnectSync();
         state.showSetupModal = false;
         render();
-      }
-    };
-    var btnCopyScript = document.getElementById('btn-copy-script');
-    if (btnCopyScript) btnCopyScript.onclick = function(){
-      var text = APPS_SCRIPT_CODE;
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(function(){
-          btnCopyScript.innerHTML = icon('check', { size: 14, valign: '-2px', marginRight: 4 }) + 'Kode tersalin';
-          setTimeout(function(){ btnCopyScript.innerHTML = icon('copy', { size: 14, valign: '-2px', marginRight: 4 }) + 'Salin kode Apps Script'; }, 2000);
-        }).catch(function(){ promptFallbackCopy(text); });
-      } else {
-        promptFallbackCopy(text);
       }
     };
 
@@ -1850,7 +1821,7 @@ function doPost(e) {
   }
 
   render();
-  if (getSyncUrl()) { pullFromSheet({ silent: true }); startPolling(); }
+  if (isConnected()) { pullFromSheet({ silent: true }); startPolling(); }
 })();
 </script>
 </body>
