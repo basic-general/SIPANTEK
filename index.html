@@ -673,7 +673,8 @@ function doPost(e) {
     var url = getSyncUrl();
     if (!url) return;
     if (isPushing) return; // push sedang jalan, skip pull ini
-    fetch(url, { method: 'GET' })
+    var bustUrl = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cb=' + Date.now();
+    fetch(bustUrl, { method: 'GET' })
       .then(function(res){ return res.json(); })
       .then(function(data){
         if (!data || data.ok !== true) throw new Error((data && data.error) || 'Gagal mengambil data');
@@ -721,20 +722,24 @@ function doPost(e) {
     isPushing = true;
     state.syncStatus = 'syncing';
     var snapshot = JSON.stringify({ projects: state.projects });
+    // mode: 'no-cors' — browser tidak blokir karena Apps Script tidak kirim CORS header.
+    // Response-nya opaque (tidak bisa dibaca), tapi POST TETAP TERKIRIM dan tersimpan di Sheets.
+    // Kita konfirmasi dengan GET ~1.5 detik sesudahnya.
     fetch(url, {
       method: 'POST',
+      mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: snapshot
     })
-      .then(function(res){ return res.json(); })
-      .then(function(data){
-        if (!data || data.ok !== true) throw new Error((data && data.error) || 'Gagal menyimpan data');
-        isPushing = false;
+      .then(function() {
+        // POST terkirim (response opaque, tidak bisa dibaca — normal untuk no-cors).
+        // Tunggu sebentar supaya Apps Script selesai nulis ke Sheets, lalu GET untuk konfirmasi.
         lastPushAt = Date.now();
-        state.syncStatus = 'synced';
-        state.lastSyncAt = new Date().toISOString();
-        state.syncErrorMsg = '';
-        safeRender();
+        return new Promise(function(resolve){ setTimeout(resolve, 1500); });
+      })
+      .then(function() {
+        isPushing = false;
+        pullFromSheet({ silent: true });
       })
       .catch(function(err){
         isPushing = false;
