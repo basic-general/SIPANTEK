@@ -660,7 +660,7 @@ function doPost(e) {
   var GIST_ID_KEY   = 'sipantek:gist-id';
   var GIST_PAT_KEY  = 'sipantek:gist-pat';
   var GIST_FILENAME = 'sipantek-data.json';
-  var POLL_INTERVAL_MS  = 30000; // 30 detik — hemat rate limit, cukup responsif
+  var POLL_INTERVAL_MS  = 10000; // 10 detik — cukup responsif, aman untuk rate limit GitHub
   var pollTimer         = null;
   var pushDebounceTimer = null;
   var isPushing         = false;
