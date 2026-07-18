@@ -384,49 +384,42 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
   }
 
   // Untuk satu proyek, cari status proyek tersebut PADA tahun tertentu:
-  // - Proyek rutin yang siklusnya sudah pernah diarsipkan ke riwayat pada
-  //   tahun itu -> pakai progress final siklus tersebut (data historis asli,
-  //   tidak berubah lagi meskipun proyek terus dipakai di tahun-tahun
-  //   berikutnya).
-  // - Proyek rutin yang siklusnya sedang berjalan dan dimulai pada tahun
-  //   itu (atau sebelumnya, dan belum pernah diarsipkan) -> tampilkan
-  //   progress saat ini sebagai estimasi "sejauh ini", ditandai belum final.
-  // - Proyek non-rutin -> dikelompokkan berdasarkan tahun proyek dibuat.
+  // - Kalau sudah ada siklus yang diarsipkan ke riwayat pada tahun itu ->
+  //   pakai progress final siklus tersebut (data historis asli, tidak
+  //   berubah lagi meskipun proyek terus dipakai di tahun-tahun berikutnya).
+  //   Berlaku untuk proyek rutin maupun non-rutin, karena keduanya kini
+  //   bisa memulai siklus baru.
+  // - Kalau siklusnya sedang berjalan dan mencakup tahun itu (belum pernah
+  //   diarsipkan) -> tampilkan progress saat ini sebagai estimasi "sejauh
+  //   ini", ditandai belum final.
   function projectYearEntry(project, year) {
-    var isRoutine = project.category === 'Rutin';
-    if (isRoutine) {
-      var archived = (project.history || []).filter(function(h){
-        return h.completedAt && new Date(h.completedAt).getFullYear() === year;
-      });
-      if (archived.length) {
-        // Kalau lebih dari satu siklus diarsipkan di tahun yang sama
-        // (misal proyek bulanan), rata-ratakan progress finalnya.
-        var avg = archived.reduce(function(s, h){ return s + h.finalProgress; }, 0) / archived.length;
-        return { progress: Math.round(avg * 10) / 10, final: true, cycles: archived.length };
-      }
-      var cycleYear = project.cycleStart ? new Date(project.cycleStart).getFullYear() : null;
-      var deadlineYear = project.deadline ? new Date(project.deadline).getFullYear() : null;
-      if (cycleYear !== null) {
-        // Siklus dianggap "mencakup" tahun yang diminta kalau tahun itu berada
-        // di antara cycleStart dan deadline (jika ada target selesai).
-        // Kalau tidak ada deadline, siklus hanya dianggap milik tahun cycleStart-nya
-        // saja, agar tidak ikut muncul di rekap tahun-tahun berikutnya tanpa batas.
-        var coversYear = deadlineYear !== null
-          ? (year >= cycleYear && year <= deadlineYear)
-          : (year === cycleYear);
-        if (coversYear) {
-          // Siklus ini mencakup tahun yang diminta tapi belum pernah
-          // diarsipkan (mis. siklus tahunan yang masih berjalan) -> tampilkan
-          // progress berjalan sebagai estimasi, bukan angka final.
-          return { progress: projectProgress(project), final: false, cycles: 0 };
-        }
-      }
-      return null; // proyek ini tidak punya data sama sekali untuk tahun tsb.
+    var archived = (project.history || []).filter(function(h){
+      return h.completedAt && new Date(h.completedAt).getFullYear() === year;
+    });
+    if (archived.length) {
+      // Kalau lebih dari satu siklus diarsipkan di tahun yang sama
+      // (misal proyek bulanan), rata-ratakan progress finalnya.
+      var avg = archived.reduce(function(s, h){ return s + h.finalProgress; }, 0) / archived.length;
+      return { progress: Math.round(avg * 10) / 10, final: true, cycles: archived.length };
     }
-    // Non-rutin: anggap "milik" tahun saat proyek itu dibuat.
-    var createdYear = project.createdAt ? new Date(project.createdAt).getFullYear() : null;
-    if (createdYear !== year) return null;
-    return { progress: projectProgress(project), final: project.status === 'Selesai', cycles: 0 };
+    var cycleYear = project.cycleStart ? new Date(project.cycleStart).getFullYear() : null;
+    var deadlineYear = project.deadline ? new Date(project.deadline).getFullYear() : null;
+    if (cycleYear !== null) {
+      // Siklus dianggap "mencakup" tahun yang diminta kalau tahun itu berada
+      // di antara cycleStart dan deadline (jika ada target selesai).
+      // Kalau tidak ada deadline, siklus hanya dianggap milik tahun cycleStart-nya
+      // saja, agar tidak ikut muncul di rekap tahun-tahun berikutnya tanpa batas.
+      var coversYear = deadlineYear !== null
+        ? (year >= cycleYear && year <= deadlineYear)
+        : (year === cycleYear);
+      if (coversYear) {
+        // Siklus ini mencakup tahun yang diminta tapi belum pernah
+        // diarsipkan (mis. siklus yang masih berjalan) -> tampilkan
+        // progress berjalan sebagai estimasi, bukan angka final.
+        return { progress: projectProgress(project), final: false, cycles: 0 };
+      }
+    }
+    return null; // proyek ini tidak punya data sama sekali untuk tahun tsb.
   }
 
   function buildYearlyRecap(year) {
@@ -1075,7 +1068,7 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
       html += recapTable(nonRoutineRows);
     }
 
-    html += '<p class="small muted" style="margin-top:16px;">Progress proyek rutin yang ditandai &ldquo;Berjalan, belum diarsipkan&rdquo; adalah angka saat ini (live) untuk siklus yang mencakup tahun ' + state.recapYear + ', dan masih bisa berubah sampai kamu menekan &ldquo;Mulai siklus baru&rdquo; pada proyek tersebut.</p>';
+    html += '<p class="small muted" style="margin-top:16px;">Progress proyek yang ditandai &ldquo;Berjalan, belum diarsipkan&rdquo; adalah angka saat ini (live) untuk siklus yang mencakup tahun ' + state.recapYear + ', dan masih bisa berubah sampai kamu menekan &ldquo;Mulai siklus baru&rdquo; pada proyek tersebut.</p>';
 
     return html;
   }
@@ -1176,16 +1169,14 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     html += '<div class="meta-field"><span class="tiny muted">Target selesai</span><input type="date" id="proj-deadline" value="' + esc(project.deadline) + '"></div>';
     html += '</div></div>';
 
-    if (isRoutine) {
-      html += '<div class="cycle-banner">';
-      html += '<span>' + icon('refresh', { valign: '-2px', marginRight: 6 }) + 'Siklus berjalan sejak ' + fmtDate(project.cycleStart) + (project.history && project.history.length ? ' &middot; ' + project.history.length + ' siklus sebelumnya tersimpan di riwayat' : '') + '</span>';
-      if (!state.confirmNewCycle) {
-        html += '<button class="ghost small" id="btn-ask-new-cycle" style="white-space:nowrap;">Mulai siklus baru</button>';
-      } else {
-        html += '<div class="row small" style="white-space:nowrap;"><span class="muted">Reset progress &amp; simpan ke riwayat?</span><button class="ghost" id="btn-confirm-new-cycle" style="color:var(--text-success); font-weight:500;">Ya, mulai baru</button><button class="ghost" id="btn-cancel-new-cycle">Batal</button></div>';
-      }
-      html += '</div>';
+    html += '<div class="cycle-banner">';
+    html += '<span>' + icon('refresh', { valign: '-2px', marginRight: 6 }) + 'Siklus berjalan sejak ' + fmtDate(project.cycleStart) + (project.history && project.history.length ? ' &middot; ' + project.history.length + ' siklus sebelumnya tersimpan di riwayat' : '') + '</span>';
+    if (!state.confirmNewCycle) {
+      html += '<button class="ghost small" id="btn-ask-new-cycle" style="white-space:nowrap;">Mulai siklus baru</button>';
+    } else {
+      html += '<div class="row small" style="white-space:nowrap;"><span class="muted">Reset progress &amp; simpan ke riwayat?</span><button class="ghost" id="btn-confirm-new-cycle" style="color:var(--text-success); font-weight:500;">Ya, mulai baru</button><button class="ghost" id="btn-cancel-new-cycle">Batal</button></div>';
     }
+    html += '</div>';
 
     if (project.trackMode === 'simple') {
       html += '<div class="simple-done-card" style="margin-bottom:1.5rem;">';
@@ -1213,22 +1204,20 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
       html += '</div>';
     }
 
-    if (isRoutine) {
-      html += '<div style="margin-top:1.5rem;">';
-      html += '<button class="ghost row small" id="btn-toggle-history">' + icon(state.showHistory ? 'chevron-down' : 'chevron-right') + 'Riwayat siklus (' + (project.history ? project.history.length : 0) + ')</button>';
-      if (state.showHistory) {
-        html += '<div class="card" style="margin-top:8px;">';
-        if (!project.history || !project.history.length) {
-          html += '<p class="small muted" style="margin:0;">Belum ada siklus yang diarsipkan. Riwayat akan terisi setelah kamu menandai pekerjaan periode ini selesai, lalu menekan &ldquo;Mulai siklus baru&rdquo; di atas.</p>';
-        } else {
-          project.history.slice().reverse().forEach(function(h){
-            html += '<div class="history-row"><span>' + fmtDate(h.cycleStart) + ' &ndash; ' + fmtDate(h.completedAt) + '</span><span style="font-weight:500;">' + h.finalProgress + '%</span></div>';
-          });
-        }
-        html += '</div>';
+    html += '<div style="margin-top:1.5rem;">';
+    html += '<button class="ghost row small" id="btn-toggle-history">' + icon(state.showHistory ? 'chevron-down' : 'chevron-right') + 'Riwayat siklus (' + (project.history ? project.history.length : 0) + ')</button>';
+    if (state.showHistory) {
+      html += '<div class="card" style="margin-top:8px;">';
+      if (!project.history || !project.history.length) {
+        html += '<p class="small muted" style="margin:0;">Belum ada siklus yang diarsipkan. Riwayat akan terisi setelah kamu menandai pekerjaan periode ini selesai, lalu menekan &ldquo;Mulai siklus baru&rdquo; di atas.</p>';
+      } else {
+        project.history.slice().reverse().forEach(function(h){
+          html += '<div class="history-row"><span>' + fmtDate(h.cycleStart) + ' &ndash; ' + fmtDate(h.completedAt) + '</span><span style="font-weight:500;">' + h.finalProgress + '%</span></div>';
+        });
       }
       html += '</div>';
     }
+    html += '</div>';
 
     html += '<div style="margin-top:1.5rem;">';
     html += '<label class="small muted" style="display:block; margin-bottom:6px;">Catatan</label>';
