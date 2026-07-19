@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SIPANTEK — Sistem Pelaporan Environmental Terkini</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   /* ============================================================
      SIPANTEK design tokens — instrument-panel aesthetic.
@@ -107,7 +107,8 @@
   .stage-card { background: var(--bg-panel); border: 1px solid var(--border-hairline); border-radius: var(--radius-lg); padding: 1rem 1.2rem; box-shadow: var(--shadow-sm); }
   .stage-name-input { font-weight: 600; font-size: 14px; border: none; background: transparent; padding: 4px 2px; font-family: var(--font-mono); border-radius: var(--radius-sm); }
   .stage-name-input:hover { background: var(--bg-panel-raised); }
-  .weight-input { width: 56px; text-align: right; padding: 6px 8px; font-family: var(--font-mono); }
+  .weight-input { width: 68px; text-align: right; padding: 6px 8px; font-family: var(--font-mono); -moz-appearance: textfield; appearance: textfield; }
+  .weight-input::-webkit-outer-spin-button, .weight-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .stage-date-input { width: 130px; padding: 6px 8px; font-size: 12.5px; }
   .task-row { display: flex; align-items: center; gap: 8px; min-height: 32px; }
   .task-block { padding-bottom: 4px; }
@@ -202,28 +203,1115 @@
     .sync-dot.syncing { animation: none; }
     .gauge-fill, .proj-card, .modal-overlay, .modal-box { transition: none; animation: none; }
   }
+
+/* Fresh UI override — keeps original data and JS logic intact */
+:root {
+  --bg-canvas: #f7f9fc;
+  --bg-panel: rgba(255,255,255,0.92);
+  --bg-panel-raised: #f3f7fb;
+  --bg-well: #eef3f7;
+  --bg-input: #ffffff;
+  --text-primary: #102033;
+  --text-secondary: #516173;
+  --text-tertiary: #8b9bad;
+  --signal-teal: #14b8a6;
+  --signal-amber: #f59e0b;
+  --signal-red: #ef4444;
+  --border-hairline: rgba(15, 23, 42, 0.07);
+  --border-subtle: rgba(15, 23, 42, 0.12);
+  --border-strong: rgba(15, 23, 42, 0.22);
+  --shadow-sm: 0 1px 2px rgba(15,23,42,0.04);
+  --shadow-md: 0 10px 30px rgba(15,23,42,0.08);
+  --shadow-lg: 0 22px 60px rgba(15,23,42,0.16);
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+}
+body {
+  background:
+    radial-gradient(circle at top left, rgba(20,184,166,0.16), transparent 34rem),
+    linear-gradient(180deg, #fbfdff 0%, var(--bg-canvas) 42%, #eef3f8 100%);
+  color: var(--text-primary);
+}
+#app { max-width: 1180px; padding: 28px 18px 56px; }
+h1 { font-size: clamp(26px, 3vw, 42px); letter-spacing: -0.045em; }
+h2 { font-size: 20px; letter-spacing: -0.025em; }
+h3 { font-size: 16px; }
+.card, .panel, .simple-done-card, .stage-card, .modal-box, .proj-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-hairline);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(14px);
+}
+.card:hover, .proj-card:hover, .stage-card:hover { border-color: rgba(20,184,166,0.26); }
+.metric-grid {
+  gap: 14px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.metric-card {
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.metric-card .val { font-size: 34px; letter-spacing: -0.04em; }
+button, input, select, textarea, .mode-card { border-radius: var(--radius-md); }
+button.primary, button.success-btn {
+  background: linear-gradient(135deg, #14b8a6, #0ea5e9);
+  border: 0;
+  color: white;
+  box-shadow: 0 12px 26px rgba(14,165,233,0.22);
+}
+button.primary:hover, button.success-btn:hover {
+  background: linear-gradient(135deg, #0faaa0, #0284c7);
+}
+button.ghost, .icon-btn { background: rgba(255,255,255,0.7); }
+input:focus, select:focus, textarea:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 4px rgba(20,184,166,0.15);
+}
+.badge, .status-pill, .freq-pill { border-radius: 999px; }
+.badge, .status-pill.done, .freq-pill.active {
+  background: rgba(20,184,166,0.12);
+  color: #0f766e;
+}
+.gauge { height: 18px; background: #e8eef5; }
+.gauge-fill { background: linear-gradient(90deg, #14b8a6, #0ea5e9); }
+.tab-item.active { color: #0f766e; border-bottom-color: #14b8a6; }
+.modal-overlay { background: rgba(15,23,42,0.42); backdrop-filter: blur(10px); }
+::-webkit-scrollbar-thumb { background: #cbd5e1; }
+@media (max-width: 720px) {
+  #app { padding: 18px 12px 44px; }
+  .metric-grid { gap: 10px; }
+  .card, .panel, .stage-card { padding: 1rem; }
+}
+
+
+/* Requested polish layer */
+#app > * { animation: view-fade 220ms ease both; }
+@keyframes view-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.card, .panel, .simple-done-card, .stage-card, .modal-box, .proj-card, .metric-card, .wizard-card {
+  border-radius: 22px;
+  box-shadow: 0 12px 34px rgba(15,23,42,0.07);
+}
+.card, .proj-card, .stage-card, .metric-card, .template-card, .mode-card, .wizard-card {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+.card:hover, .proj-card:hover, .stage-card:hover, .metric-card:hover, .template-card:hover, .mode-card:hover, .wizard-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 42px rgba(15,23,42,0.10);
+}
+.top-actions { align-items: center; }
+.more-menu { position: relative; }
+.more-menu summary { list-style: none; min-height: 36px; display: inline-flex; align-items: center; cursor: pointer; }
+.more-menu summary::-webkit-details-marker { display: none; }
+.more-menu summary::after { content: "⌄"; margin-left: 8px; color: var(--text-tertiary); }
+.more-menu[open] summary::after { transform: rotate(180deg); }
+.more-menu-panel {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 20;
+  display: grid; gap: 6px; min-width: 180px; padding: 8px;
+  background: var(--bg-panel); border: 1px solid var(--border-hairline);
+  border-radius: 16px; box-shadow: var(--shadow-lg);
+}
+.more-menu-panel button { justify-content: flex-start; width: 100%; }
+.sync-status {
+  width: auto; min-height: 28px; padding: 5px 10px; border-radius: 999px;
+  background: rgba(148,163,184,0.12); border: 1px solid var(--border-hairline);
+}
+.sync-status:has(.synced) { color: #0f766e; background: rgba(20,184,166,0.10); }
+.sync-status:has(.syncing) { color: #0369a1; background: rgba(14,165,233,0.10); }
+.sync-status:has(.error) { color: #b91c1c; background: rgba(239,68,68,0.10); }
+.proj-card { overflow: hidden; padding-bottom: 1.35rem; border-left-width: 0; }
+.proj-card:hover { transform: translateY(-3px); }
+.proj-bottom-progress { position: absolute; left: 0; right: 0; bottom: 0; }
+.proj-bottom-progress .gauge { height: 4px; border: 0; border-radius: 0; background: transparent; }
+.proj-bottom-progress .gauge-fill { border-radius: 0; }
+.inline-warning {
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #d97706; background: rgba(245,158,11,0.12);
+  width: 24px; height: 24px; border-radius: 999px; flex-shrink: 0;
+}
+.tabs { position: relative; gap: 4px; border-bottom: 1px solid var(--border-hairline); }
+.tab-btn { position: relative; background: transparent; border: 0; border-radius: 0; }
+.tab-btn::after {
+  content: ""; position: absolute; left: 14px; right: 14px; bottom: -1px; height: 3px;
+  border-radius: 999px; background: #14b8a6; transform: scaleX(0); transform-origin: center;
+  transition: transform 220ms ease;
+}
+.tab-btn.active::after, .tab-btn:hover::after { transform: scaleX(1); }
+.meta-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; align-items: end; }
+.meta-field { width: auto; min-width: 0; }
+.stage-card { padding: 1rem; }
+.stage-card > .row:first-child { gap: 12px; align-items: center; }
+.stage-inline-progress { display: flex; align-items: center; gap: 8px; min-width: 140px; flex: 0 1 180px; }
+.stage-inline-progress .gauge { height: 6px; min-width: 90px; }
+.task-row input[type="checkbox"] {
+  appearance: none; width: 18px; height: 18px; border: 1.5px solid var(--border-strong);
+  border-radius: 6px; background: white; display: grid; place-content: center;
+  transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+.task-row input[type="checkbox"]::before {
+  content: ""; width: 9px; height: 9px; transform: scale(0); transition: transform 160ms cubic-bezier(.2,1.6,.4,1);
+  clip-path: polygon(14% 44%, 0 60%, 40% 100%, 100% 16%, 84% 0, 38% 64%);
+  background: white;
+}
+.task-row input[type="checkbox"]:checked { background: #14b8a6; border-color: #14b8a6; transform: scale(1.08); }
+.task-row input[type="checkbox"]:checked::before { transform: scale(1); }
+.new-project-form { display: grid; gap: 14px; }
+.wizard-card { background: rgba(255,255,255,0.82); border: 1px solid var(--border-hairline); padding: 1rem; }
+.wizard-card h2 { font-size: 15px; margin: 0 0 12px; color: var(--text-primary); }
+@media (max-width: 760px) {
+  .more-menu-panel { right: auto; left: 0; }
+  .stage-inline-progress { min-width: 100%; order: 3; }
+}
+
+
+/* Revision layer */
+.topbar { align-items: flex-start; }
+.topbar > div:first-child { min-width: 260px; }
+.top-actions {
+  justify-content: flex-start;
+  margin-top: 10px;
+  max-width: 760px;
+}
+.more-menu summary.ghost {
+  border: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.85);
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+}
+.proj-bottom-progress { display: flex; align-items: center; gap: 8px; padding-right: 46px; }
+.proj-progress-label {
+  position: absolute; right: 10px; bottom: 3px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  color: var(--text-secondary); line-height: 1;
+}
+.inline-warning {
+  width: auto; height: 24px; padding: 0 8px;
+  gap: 4px; font-size: 11px; font-weight: 600;
+}
+.tabs { gap: inherit; border-bottom: inherit; }
+.tab-btn::after { content: none; }
+.task-row input[type="checkbox"] {
+  appearance: auto;
+  width: 18px;
+  height: 18px;
+  border: initial;
+  border-radius: initial;
+  background: initial;
+  display: initial;
+  place-content: initial;
+  transition: initial;
+  accent-color: var(--signal-teal);
+}
+.task-row input[type="checkbox"]::before { content: none; }
+.task-row input[type="checkbox"]:checked {
+  background: initial;
+  border-color: initial;
+  transform: none;
+}
+@media (max-width: 760px) {
+  .top-actions { max-width: none; }
+}
+
+
+/* Second revision layer */
+.topbar {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  align-items: start;
+  overflow: visible;
+}
+.topbar > div:first-child { min-width: 0; }
+.top-actions {
+  width: 100%;
+  max-width: none;
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+  overflow: visible;
+  position: relative;
+  z-index: 30;
+}
+.logo-strip { order: 0; }
+.sync-status, #btn-sync-settings, #btn-refresh-sync { order: 1; }
+#btn-recap { order: 2; }
+.more-menu { order: 3; z-index: 80; }
+#btn-new { order: 4; }
+.more-menu summary.ghost {
+  min-height: 36px;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 6px 12px;
+  line-height: 1;
+}
+.more-menu-panel {
+  z-index: 999;
+  top: calc(100% + 10px);
+}
+.proj-card { padding-bottom: 1.65rem; }
+.proj-bottom-progress {
+  height: 18px;
+  padding-right: 54px;
+  background: rgba(226,232,240,0.45);
+}
+.proj-bottom-progress .gauge {
+  position: absolute;
+  left: 0;
+  right: 54px;
+  bottom: 0;
+  height: 5px;
+}
+.proj-progress-label {
+  right: 12px;
+  bottom: 4px;
+  min-width: 34px;
+  text-align: right;
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.75);
+  border-radius: 999px;
+  padding: 1px 4px;
+}
+.tabs {
+  display: inline-flex;
+  width: fit-content;
+  gap: 0;
+  padding: 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.78);
+  box-shadow: var(--shadow-sm);
+}
+.tab-btn {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  padding: 8px 18px;
+  min-height: 34px;
+}
+.tab-btn.active {
+  background: var(--signal-teal);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(20,184,166,0.22);
+}
+.tab-btn:hover:not(.active) { background: var(--bg-panel-raised); }
+@media (max-width: 900px) {
+  .top-actions { align-items: stretch; }
+  .logo-strip { width: 100%; }
+}
+
+
+/* Third revision layer */
+body {
+  background: linear-gradient(180deg, #f8fafc 0%, #f3f7fb 48%, #eef4f8 100%);
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(20,184,166,0.10) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.55), transparent 55%);
+}
+button.ghost, .more-menu summary.ghost, .tab-btn {
+  border-radius: var(--radius-md);
+  min-height: 36px;
+  font-size: 14px;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.more-menu { position: relative; z-index: 1000; }
+.more-menu[open] { z-index: 2000; }
+.more-menu-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 3000;
+  transform: translateZ(0);
+}
+.topbar, .top-actions { overflow: visible !important; }
+.tabs {
+  border-radius: var(--radius-md);
+  padding: 3px;
+  border-color: transparent;
+  background: color-mix(in srgb, var(--signal-teal) 13%, white);
+}
+.tab-btn.active {
+  background: linear-gradient(135deg, #14b8a6, #0ea5e9);
+  color: #fff;
+  box-shadow: 0 12px 26px rgba(14,165,233,0.22);
+}
+.tab-btn:hover:not(.active) { background: rgba(255,255,255,0.7); color: var(--text-primary); }
+.proj-card { padding-bottom: 1.35rem; }
+.proj-bottom-progress { height: auto; padding-right: 0; background: transparent; }
+.proj-bottom-progress .gauge { position: static; left: auto; right: auto; bottom: auto; height: 4px; }
+.proj-progress-label { display: none; }
+#btn-theme { order: 5; }
+html.dark-mode {
+  --bg-canvas: #0f172a;
+  --bg-panel: rgba(15,23,42,0.86);
+  --bg-panel-raised: #1e293b;
+  --bg-well: #111827;
+  --bg-input: #0b1220;
+  --bg-info: rgba(14,165,233,0.14);
+  --bg-success: rgba(20,184,166,0.14);
+  --bg-danger: rgba(239,68,68,0.14);
+  --bg-amber: rgba(245,158,11,0.14);
+  --text-primary: #e5edf7;
+  --text-secondary: #a8b4c5;
+  --text-tertiary: #708095;
+  --border-hairline: rgba(226,232,240,0.08);
+  --border-subtle: rgba(226,232,240,0.14);
+  --border-strong: rgba(226,232,240,0.24);
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 12px 34px rgba(0,0,0,0.28);
+  --shadow-lg: 0 22px 60px rgba(0,0,0,0.38);
+}
+html.dark-mode body {
+  background: linear-gradient(180deg, #07111f 0%, #0f172a 50%, #111827 100%);
+}
+html.dark-mode body::before { background-image: radial-gradient(rgba(20,184,166,0.16) 1px, transparent 1px); }
+html.dark-mode input, html.dark-mode select, html.dark-mode textarea,
+html.dark-mode button.ghost, html.dark-mode .more-menu summary.ghost {
+  background: rgba(15,23,42,0.72);
+  color: var(--text-primary);
+}
+html.dark-mode .tabs { background: rgba(20,184,166,0.16); }
+html.dark-mode .tab-btn:hover:not(.active) { background: rgba(255,255,255,0.08); }
+
+
+/* Fourth revision layer */
+body {
+  background:
+    radial-gradient(circle at top left, rgba(20,184,166,0.16), transparent 34rem),
+    linear-gradient(180deg, #fbfdff 0%, var(--bg-canvas) 42%, #eef3f8 100%);
+}
+body::before { content: none; }
+button, button.ghost, .more-menu summary.ghost, .tab-btn, .theme-toggle {
+  font-family: var(--font-mono);
+}
+.metric-card:hover {
+  transform: none;
+  box-shadow: var(--shadow-sm);
+  border-color: var(--border-hairline);
+}
+.proj-card { padding-bottom: 1.85rem; }
+.proj-bottom-progress { height: 24px; }
+.proj-bottom-progress .gauge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+}
+.proj-progress-label {
+  display: block;
+  right: 12px;
+  bottom: 7px;
+  background: transparent;
+  padding: 0;
+  color: var(--text-secondary);
+}
+.theme-toggle {
+  order: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: rgba(255,255,255,0.85);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+.theme-toggle-track {
+  width: 34px;
+  height: 18px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--bg-well);
+  border: 1px solid var(--border-hairline);
+  display: inline-flex;
+  align-items: center;
+}
+.theme-toggle-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--signal-teal);
+  transform: translateX(0);
+  transition: transform 160ms ease;
+}
+.theme-toggle[aria-pressed="true"] .theme-toggle-thumb { transform: translateX(14px); }
+html.dark-mode body {
+  background:
+    radial-gradient(circle at top left, rgba(20,184,166,0.18), transparent 34rem),
+    linear-gradient(180deg, #07111f 0%, #0f172a 50%, #111827 100%);
+}
+html.dark-mode .theme-toggle { background: rgba(15,23,42,0.72); color: var(--text-primary); }
+
+
+/* Fifth revision layer */
+html.dark-mode {
+  color-scheme: dark;
+  --bg-canvas: #0b1220;
+  --bg-panel: rgba(15, 23, 42, 0.92);
+  --bg-panel-raised: #111c2f;
+  --bg-well: #0f1a2b;
+  --bg-input: #0d1728;
+  --bg-info: rgba(14, 165, 233, 0.16);
+  --bg-success: rgba(20, 184, 166, 0.16);
+  --bg-danger: rgba(239, 68, 68, 0.16);
+  --bg-amber: rgba(245, 158, 11, 0.16);
+  --text-primary: #eaf2ff;
+  --text-secondary: #b7c4d7;
+  --text-tertiary: #7f8fa6;
+  --text-info: #7dd3fc;
+  --text-success: #5eead4;
+  --text-danger: #fca5a5;
+  --text-amber: #fcd34d;
+  --border-hairline: rgba(226,232,240,0.08);
+  --border-subtle: rgba(226,232,240,0.14);
+  --border-strong: rgba(226,232,240,0.28);
+}
+html.dark-mode .card,
+html.dark-mode .panel,
+html.dark-mode .simple-done-card,
+html.dark-mode .stage-card,
+html.dark-mode .modal-box,
+html.dark-mode .proj-card,
+html.dark-mode .metric-card,
+html.dark-mode .wizard-card,
+html.dark-mode .more-menu-panel {
+  background: var(--bg-panel);
+  border-color: var(--border-hairline);
+}
+html.dark-mode .metric-card .val,
+html.dark-mode .wordmark,
+html.dark-mode h1,
+html.dark-mode h2,
+html.dark-mode h3 { color: var(--text-primary); }
+html.dark-mode .logo-strip img { filter: brightness(1.08) contrast(0.96); }
+html.dark-mode .gauge { background: rgba(148,163,184,0.22); }
+html.dark-mode .freq-pill,
+html.dark-mode .badge { background: rgba(226,232,240,0.08); color: var(--text-secondary); }
+.metric-card:hover {
+  transform: none !important;
+  box-shadow: var(--shadow-sm) !important;
+  border-color: var(--border-hairline) !important;
+  background: var(--bg-panel) !important;
+}
+.proj-card:hover {
+  background: var(--bg-panel-raised);
+  border-color: var(--signal-teal) !important;
+  transform: translateY(-3px);
+  box-shadow: 0 0 0 3px rgba(20,184,166,0.20), var(--shadow-md) !important;
+}
+.more-menu summary.ghost {
+  color: var(--text-secondary) !important;
+  border-color: var(--border-subtle);
+  display: inline-grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  column-gap: 6px;
+  min-width: 112px;
+}
+.more-menu summary.ghost .icon-svg { color: currentColor; }
+.more-menu summary::after {
+  justify-self: end;
+  align-self: center;
+  margin-left: 8px;
+  color: currentColor;
+  line-height: 1;
+}
+.more-menu-panel {
+  z-index: 99999 !important;
+  isolation: isolate;
+}
+.topbar, .top-actions, #app { overflow: visible !important; }
+.more-menu, .more-menu[open] { z-index: 99998 !important; }
+
+
+/* Sixth revision layer */
+body {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(20,184,166,0.12), transparent 30rem),
+    linear-gradient(180deg, #fbfdff 0%, #f7f9fc 36%, #f5f8fb 68%, #eef4f8 100%);
+}
+.metric-grid {
+  margin-bottom: 1.35rem;
+}
+.proj-card .freq-pill,
+.proj-card .badge {
+  min-height: 24px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.more-menu summary.ghost {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  min-width: 118px;
+  color: var(--text-secondary) !important;
+  background: var(--bg-input);
+}
+.more-menu summary.ghost::after {
+  content: "⌄";
+  margin-left: auto;
+  color: var(--text-secondary) !important;
+  line-height: 1;
+  transform-origin: center;
+}
+.more-menu[open] summary.ghost::after { transform: rotate(180deg); }
+.more-menu summary.ghost .icon-svg { color: var(--text-secondary) !important; }
+html.dark-mode .more-menu summary.ghost,
+html.dark-mode .more-menu summary.ghost::after,
+html.dark-mode .more-menu summary.ghost .icon-svg {
+  color: var(--text-secondary) !important;
+}
+.more-menu-panel {
+  position: fixed;
+  top: auto;
+  right: auto;
+  z-index: 2147483647 !important;
+  margin-top: 8px;
+}
+.task-block { margin: 0; }
+.task-row {
+  gap: 8px;
+  min-height: 30px;
+  align-items: center;
+}
+.stage-card [style*="flex-direction:column; gap:6px"] { gap: 8px !important; }
+.task-row input.task-name { min-height: 28px; }
+html.dark-mode body {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(20,184,166,0.14), transparent 30rem),
+    linear-gradient(180deg, #07111f 0%, #0b1220 42%, #0f172a 72%, #111827 100%);
+}
+
+
+/* Dropdown position fix */
+.topbar { position: relative; z-index: 40; }
+.more-menu { position: relative !important; isolation: isolate; }
+.more-menu-panel {
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  right: 0 !important;
+  left: auto !important;
+  margin-top: 0 !important;
+  z-index: 2147483647 !important;
+}
+.more-menu summary::after,
+.more-menu summary.ghost::after { content: none !important; }
+.more-menu-caret { display: inline-flex; align-items: center; margin-left: auto; transition: transform 0.15s ease; }
+.more-menu[open] .more-menu-caret { transform: rotate(180deg); }
+
+
+/* Eighth revision layer: flat thin-border metric cards + unified dropdown styling */
+.metric-card,
+.metric-card:hover {
+  box-shadow: none !important;
+  transform: none !important;
+  border: 1px solid var(--border-hairline) !important;
+  background: var(--bg-panel) !important;
+}
+
+/* Make every <select> dropdown match the "Lainnya" ghost-button look */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  min-height: 36px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--text-secondary);
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 6px 32px 6px 12px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%234B6157' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 12px center !important;
+  background-size: 10px 6px !important;
+  cursor: pointer;
+}
+select:hover {
+  background-color: var(--bg-panel-raised);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+select:focus {
+  border-color: var(--signal-teal);
+  box-shadow: 0 0 0 3px rgba(13,148,136,0.16);
+}
+html.dark-mode select {
+  background-color: #101a2c;
+  color: #d7e2f0;
+  border-color: var(--border-subtle);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23b7c4d7' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 12px center !important;
+  background-size: 10px 6px !important;
+}
+html.dark-mode select:hover {
+  background-color: #16223a;
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+html.dark-mode select:focus {
+  border-color: var(--signal-teal);
+  box-shadow: 0 0 0 3px rgba(20,184,166,0.22);
+}
+html.dark-mode select option {
+  background-color: #101a2c;
+  color: #d7e2f0;
+}
+
+/* Dark mode: sharpen ghost buttons and icon buttons for readability */
+html.dark-mode button.ghost {
+  background-color: rgba(15,23,42,0.85);
+  color: var(--text-secondary);
+  border-color: var(--border-subtle);
+}
+html.dark-mode button.ghost:hover {
+  background-color: #16223a;
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+html.dark-mode .icon-btn { color: var(--text-tertiary); }
+html.dark-mode .icon-btn:hover { background-color: #16223a; color: var(--text-primary); }
+html.dark-mode input, html.dark-mode textarea {
+  background-color: #101a2c;
+  color: #eaf2ff;
+  border-color: var(--border-subtle);
+}
+html.dark-mode input::placeholder, html.dark-mode textarea::placeholder { color: var(--text-tertiary); }
+html.dark-mode .tiny.muted, html.dark-mode .small.muted, html.dark-mode .muted { color: var(--text-secondary); }
+
+/* Kembali button: same color palette as "Proyek baru" primary button */
+#btn-back {
+  background: linear-gradient(135deg, #14b8a6, #0ea5e9) !important;
+  border: 0 !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  box-shadow: 0 12px 26px rgba(14,165,233,0.22);
+}
+#btn-back:hover {
+  background: linear-gradient(135deg, #0faaa0, #0284c7) !important;
+  color: #ffffff !important;
+}
+#btn-back .icon-svg { color: #ffffff; }
+
+/* Ninth revision layer: fix remaining light-mode leftovers in dark mode + smoother motion */
+html.dark-mode .icon-btn {
+  background: rgba(255,255,255,0.05);
+  border-color: transparent;
+}
+html.dark-mode .icon-btn:hover {
+  background-color: #16223a;
+  border-color: var(--border-subtle);
+}
+html.dark-mode button.ghost.small,
+html.dark-mode button.ghost.row {
+  background-color: rgba(15,23,42,0.85);
+  color: var(--text-secondary);
+}
+
+/* Smoother, less abrupt motion across interactive elements */
+button {
+  transition: background 0.18s ease, transform 0.15s cubic-bezier(.25,.8,.25,1),
+    border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+}
+button:active { transform: scale(0.97); transition-duration: 0.08s; }
+.icon-btn {
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.15s ease;
+}
+select, input, textarea {
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
+}
+.more-menu-caret { transition: transform 0.22s cubic-bezier(.4,0,.2,1); }
+.gauge-fill { transition: width 0.55s cubic-bezier(.4,0,.2,1); }
+.proj-card, .stage-card, .card, .template-card, .mode-card, .wizard-card {
+  transition: transform 0.22s cubic-bezier(.25,.8,.25,1), box-shadow 0.22s ease,
+    border-color 0.22s ease, background 0.22s ease;
+}
+#app > * { animation: none; }
+.task-row input[type="checkbox"],
+.task-row input[type="checkbox"]:checked,
+.task-row input[type="checkbox"]:not(:checked) {
+  animation: none;
+}
+.task-name.done { animation: none; }
+.task-row:has(input[type="checkbox"]:checked) { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.001s !important; animation-duration: 0.001s !important; }
+}
+
+
+/* Frequency pill in project detail: match the select box beside it */
+.meta-row-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 6px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  white-space: normal;
+  line-height: 1.3;
+  width: max-content;
+  max-width: 100%;
+  justify-self: start;
+}
+html.dark-mode .meta-row-pill {
+  background-color: #101a2c;
+  color: #d7e2f0;
+  border-color: var(--border-subtle);
+}
+
+
+  /* Language-specific styles */
+  body[lang="zh"] {
+    font-family: 'Noto Sans SC', var(--font-sans);
+  }
+
+  body[lang="zh"] h1,
+  body[lang="zh"] h2,
+  body[lang="zh"] h3 {
+    font-family: 'Noto Sans SC', var(--font-mono);
+    letter-spacing: 0;
+  }
+
+  body[lang="zh"] .mono {
+    font-family: var(--font-mono), 'Noto Sans SC';
+  }
+
+  /* Language toggle */
+  .lang-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 1000;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 6px 8px;
+    display: flex;
+    gap: 4px;
+    box-shadow: var(--shadow-md);
+  }
+
+  .lang-toggle button {
+    padding: 6px 12px;
+    min-height: 32px;
+    font-size: 13px;
+    font-weight: 500;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+
+  .lang-toggle button:hover {
+    background: var(--bg-panel-raised);
+    color: var(--text-primary);
+    border-color: var(--border-hairline);
+  }
+
+  .lang-toggle button.active {
+    background: var(--signal-teal);
+    color: white;
+    font-weight: 600;
+    border-color: var(--signal-teal);
+  }
+
 </style>
 
 </head>
-<body>
+<body lang="id">
+
+<div class="lang-toggle">
+  <button onclick="setLanguage('id')" id="lang-btn-id" class="active">ID</button>
+  <button onclick="setLanguage('zh')" id="lang-btn-zh">中文</button>
+</div>
+
+
 <div id="app"></div>
+
+
+<script>
+// ============ BILINGUAL SUPPORT (ID/中文) ============
+// This must load before the main app
+
+var TRANSLATIONS = {
+  id: {
+    appTitle: 'SIPANTEK',
+    appSubtitle: 'Sistem Pelaporan Environmental Terkini',
+    allProjects: 'Semua Proyek',
+    addProject: 'Tambah Proyek',
+    routine: 'Rutin',
+    nonRoutine: 'Non-Rutin',
+    notStarted: 'Belum mulai',
+    inProgress: 'Berlangsung',
+    onHold: 'Ditunda',
+    completed: 'Selesai',
+    daily: 'Harian',
+    weekly: 'Mingguan',
+    monthly: 'Bulanan',
+    quarterly: '3 bulan sekali',
+    semiannual: '6 bulan sekali',
+    annual: 'Tahunan',
+    once: 'Sekali',
+    emission: 'Emisi',
+    wastewater: 'Air Limbah',
+    hazardousWaste: 'Limbah B3 dan Non-B3',
+    waste: 'Sampah',
+    b3: 'B3',
+    compliance: 'Compliance',
+    iso: 'ISO',
+    inspection: 'Inspeksi',
+    general: 'Umum',
+    projectName: 'Nama Proyek',
+    category: 'Kategori',
+    aspect: 'Aspek',
+    frequency: 'Frekuensi',
+    pic: 'Penanggung Jawab',
+    deadline: 'Deadline',
+    status: 'Status',
+    progress: 'Progress',
+    notes: 'Catatan',
+    stage: 'Tahap',
+    stages: 'Tahapan',
+    task: 'Task',
+    tasks: 'Tasks',
+    weight: 'Bobot',
+    add: 'Tambah',
+    addStage: 'Tambah Tahap',
+    addTask: 'Tambah Task',
+    addItem: 'Tambah Item',
+    all: 'Semua',
+    name: 'Nama',
+    save: 'Simpan',
+    cancel: 'Batal',
+    delete: 'Hapus',
+    edit: 'Edit',
+    back: 'Kembali',
+    export: 'Export',
+    import: 'Import',
+    confirmDelete: 'Yakin hapus proyek ini?',
+    confirmDeleteStage: 'Yakin hapus tahap ini?',
+    confirmDeleteTask: 'Yakin hapus task ini?',
+    noProjects: 'Belum ada proyek',
+    connected: 'Tersambung',
+    disconnected: 'Terputus',
+    syncing: 'Sinkronisasi...',
+
+    synced: 'Tersinkron',
+    syncFailed: 'Gagal sinkron',
+    lastSync: 'Sync terakhir',
+    yearlyRecap: 'Rekap Tahunan',
+    recoverData: 'Pulihkan Data',
+    disconnect: 'Putuskan',
+    connect: 'Sambungkan',
+    allFrequencies: 'Semua Frekuensi',
+    allStatuses: 'Semua Status',
+    allAspects: 'Semua Aspek',
+    newProject: 'Proyek baru',
+    totalProjects: 'Total proyek',
+    ongoing: 'Sedang berjalan',
+    avgProgress: 'Rata-rata progress',
+    mainInfo: 'Informasi Utama',
+    stages: '阶段',
+    recordedProjects: 'Total proyek tercatat',
+    routineProjects2: 'Proyek rutin',
+    nonRoutineProjects2: 'Proyek non-rutin',
+    completedProjects: 'Proyek tuntas 100%',
+    of: 'dari',
+    openProject: 'Buka proyek',
+    unnamed: 'tanpa nama',
+    routineProjects: 'Proyek rutin',
+    nonRoutineProjects: 'Proyek non-rutin',
+  },  zh: {
+    appTitle: 'SIPANTEK',
+    appSubtitle: '环境报告系统',
+    allProjects: '所有项目',
+    addProject: '添加项目',
+    routine: '常规',
+    nonRoutine: '非常规',
+    notStarted: '未开始',
+    inProgress: '进行中',
+    onHold: '暂停',
+    completed: '已完成',
+    daily: '每日',
+    weekly: '每周',
+    monthly: '每月',
+    quarterly: '每季度',
+    semiannual: '每半年',
+    annual: '每年',
+    once: '一次性',
+    emission: '排放',
+    wastewater: '废水',
+    hazardousWaste: '有害和非有害废物',
+    waste: '垃圾',
+    b3: '有害物质',
+    compliance: '合规',
+    iso: 'ISO标准',
+    inspection: '检查',
+    general: '一般',
+    projectName: '项目名称',
+    category: '类别',
+    aspect: '方面',
+    frequency: '频率',
+    pic: '负责人',
+    deadline: '截止日期',
+    status: '状态',
+    progress: '进度',
+    notes: '备注',
+    stage: '阶段',
+    stages: '阶段',
+    task: '任务',
+    tasks: '任务',
+    weight: '权重',
+    save: '保存',
+    cancel: '取消',
+    delete: '删除',
+    add: '添加',
+
+    addStage: '添加阶段',
+    addTask: '添加任务',
+    addItem: '添加项目',
+    all: '全部',
+    name: '名称',
+    edit: '编辑',
+    back: '返回',
+    export: '导出',
+    import: '导入',
+    confirmDelete: '确定要删除此项目吗？',
+    confirmDeleteStage: '确定要删除此阶段吗？',
+    confirmDeleteTask: '确定要删除此任务吗？',
+    noProjects: '暂无项目',
+    connected: '已连接',
+    disconnected: '已断开',
+    syncing: '同步中...',
+
+    synced: '已同步',
+    syncFailed: '同步失败',
+    lastSync: '上次同步',
+    yearlyRecap: '年度回顾',
+    recoverData: '恢复数据',
+    disconnect: '断开连接',
+    connect: '连接',
+    allFrequencies: '所有频率',
+    allStatuses: '所有状态',
+    allAspects: '所有方面',
+    newProject: '新项目',
+    totalProjects: '总项目',
+    ongoing: '进行中',
+    avgProgress: '平均进度',
+    mainInfo: '主要信息',
+    stages: '阶段',
+    recordedProjects: '已记录项目总数',
+    routineProjects2: '常规项目',
+    nonRoutineProjects2: '非常规项目',
+    completedProjects: '已完成项目 100%',
+    of: '/',
+    openProject: '打开项目',
+    unnamed: '未命名',
+    routineProjects: '常规项目',
+    nonRoutineProjects: '非常规项目',
+  }
+};
+var currentLang = localStorage.getItem('sipantek-lang') || 'id';
+
+function t(key) {
+  return (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) || key;
+}
+
+function setLanguage(lang) {
+  if (lang !== 'id' && lang !== 'zh') lang = 'id';
+  currentLang = lang;
+  localStorage.setItem('sipantek-lang', lang);
+  document.body.setAttribute('lang', lang);
+  document.documentElement.setAttribute('lang', lang);
+  document.title = t('appTitle') + ' — ' + t('appSubtitle');
+
+  // Update toggle buttons
+  var idBtn = document.getElementById('lang-btn-id');
+  var zhBtn = document.getElementById('lang-btn-zh');
+  if (idBtn && zhBtn) {
+    idBtn.classList.toggle('active', lang === 'id');
+    zhBtn.classList.toggle('active', lang === 'zh');
+  }
+
+  // Re-render if main app is loaded
+  if (typeof window.sipantekRender === 'function') {
+    window.sipantekRender();
+  }
+}
+
+window.setLanguage = setLanguage;
+window.t = t;
+
+// Initialize language on load
+document.addEventListener('DOMContentLoaded', function() {
+  setLanguage(currentLang);
+});
+
+// ============ END BILINGUAL SUPPORT ============
+</script>
 
 <script>
 (function(){
+  if (localStorage.getItem('sipantek-theme') === 'dark') document.documentElement.classList.add('dark-mode');
   'use strict';
 
   var LOGO_PERUSAHAAN = 'data:image/png;base64,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';
 var LOGO_ENVIRO = 'data:image/png;base64,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';
 var LOGO_KLH = 'data:image/png;base64,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';
 
-  var STORAGE_KEY = 'enviro-tracker:projects:v2';
+  // ============ STORAGE & STATE ============
+    var STORAGE_KEY = 'enviro-tracker:projects:v2';
   var OLD_STORAGE_KEY = 'enviro-tracker:projects';
 
   function safeNormalize(p) {
     try { return normalizeProject(p); }
     catch(e) { console.warn('SIPANTEK: gagal normalize proyek, dilewati:', e, p); return null; }
   }
-  function loadProjects() {
+  // ============ DATA LOADING & PERSISTENCE ============
+    function loadProjects() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
@@ -254,16 +1342,18 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     return p;
   }
 
-  var FREQUENCIES = [
-    { key: 'harian', label: 'Harian' },
-    { key: 'mingguan', label: 'Mingguan' },
-    { key: 'bulanan', label: 'Bulanan' },
-    { key: 'triwulan', label: '3 bulan sekali' },
-    { key: 'semesteran', label: '6 bulan sekali' },
-    { key: 'tahunan', label: 'Tahunan' }
-  ];
-  var STATUS_OPTIONS = ['Belum mulai', 'Berjalan', 'Tertunda', 'Selesai'];
-  var ASPECT_OPTIONS = ['Emisi', 'Air Limbah', 'Limbah B3 dan Non-B3', 'Sampah', 'B3', 'Compliance', 'ISO', 'Inspeksi', 'Umum'];
+  function FREQUENCIES() {
+    return [
+      { key: 'harian', label: t('daily') },
+      { key: 'mingguan', label: t('weekly') },
+      { key: 'bulanan', label: t('monthly') },
+      { key: 'triwulan', label: t('quarterly') },
+      { key: 'semesteran', label: t('semiannual') },
+      { key: 'tahunan', label: t('annual') }
+    ];
+  }
+  function STATUS_OPTIONS() { return [t('notStarted'), t('inProgress'), t('onHold'), t('completed')]; }
+  function ASPECT_OPTIONS() { return [t('emission'), t('wastewater'), t('hazardousWaste'), t('waste'), t('b3'), t('compliance'), t('iso'), t('inspection'), t('general')]; }
 
   var TEMPLATES = {
     cems: {
@@ -293,7 +1383,7 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
   function uid(prefix) { return (prefix || 'id') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8); }
 
   function freqLabel(key) {
-    var f = FREQUENCIES.filter(function(x){ return x.key === key; })[0];
+    var f = FREQUENCIES().filter(function(x){ return x.key === key; })[0];
     return f ? f.label : 'Sekali';
   }
 
@@ -302,13 +1392,13 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     return {
       id: uid('proj'),
       name: t.name,
-      category: isRoutine ? 'Rutin' : 'Non-rutin',
+      category: isRoutine ? 'Rutin' : 'Non-Rutin',
       aspect: 'Umum',
       frequency: isRoutine ? t.frequency : 'sekali',
       trackMode: t.trackMode,
       pic: '',
       deadline: '',
-      status: 'Berjalan',
+      status: 'Berlangsung',
       notes: '',
       createdAt: new Date().toISOString(),
       cycleStart: new Date().toISOString(),
@@ -449,17 +1539,17 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     });
     if (!Array.isArray(p.history)) p.history = [];
     if (!p.id) p.id = uid('proj');
-    if (!p.category) p.category = 'Non-rutin';
+    if (!p.category) p.category = 'Non-Rutin';
     if (!p.status) p.status = 'Belum mulai';
-    if (!p.aspect || ASPECT_OPTIONS.indexOf(p.aspect) === -1) p.aspect = 'Umum';
+    if (!p.aspect || ASPECT_OPTIONS().indexOf(p.aspect) === -1) p.aspect = 'Umum';
     if (typeof p.name !== 'string') p.name = '';
     return p;
   }
   function statusColorVars(status) {
     switch (status) {
       case 'Selesai': return { bg: 'var(--bg-success)', text: 'var(--text-success)' };
-      case 'Berjalan': return { bg: 'var(--bg-info)', text: 'var(--text-info)' };
-      case 'Tertunda': return { bg: 'var(--bg-danger)', text: 'var(--text-danger)' };
+      case 'Berlangsung': return { bg: 'var(--bg-info)', text: 'var(--text-info)' };
+      case 'Ditunda': return { bg: 'var(--bg-danger)', text: 'var(--text-danger)' };
       default: return { bg: 'var(--bg-well)', text: 'var(--text-secondary)' };
     }
   }
@@ -515,6 +1605,7 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     check: '<path d="M20 6 9 17l-5-5"/>',
     download: '<path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M5 19h14"/>',
     upload: '<path d="M12 21V9m0 0 4 4m-4-4-4 4"/><path d="M5 5h14"/>',
+    'more-horizontal': '<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
     'alert-triangle': '<path d="M12 9v3.5M12 17h.01"/><path d="M10.6 3.86 2.1 18a1.8 1.8 0 0 0 1.55 2.7h16.7A1.8 1.8 0 0 0 21.9 18L13.4 3.86a1.8 1.8 0 0 0-3.1 0Z"/>',
     checkbox: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/>',
     'file-plus': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 12v6M9 15h6"/>',
@@ -751,6 +1842,7 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
   }
 
   function render() {
+    window.sipantekRender = render;
     // Kalau ada render lain yang sedang ditunda (mis. dipicu sync di
     // belakang layar) sementara user mengetik, jangan timpa DOM sekarang —
     // tunggu sampai user selesai (blur), lalu render sekali saja saat itu.
@@ -855,9 +1947,9 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     var hasUrl = isConnected();
     if (hasUrl) {
       var dotClass = state.syncStatus === 'synced' ? 'synced' : (state.syncStatus === 'syncing' ? 'syncing' : (state.syncStatus === 'error' ? 'error' : 'offline'));
-      var label = state.syncStatus === 'synced' ? ('Tersinkron' + (state.lastSyncAt ? ' &middot; ' + fmtTime(state.lastSyncAt) : ''))
-        : state.syncStatus === 'syncing' ? 'Menyinkronkan...'
-        : state.syncStatus === 'error' ? 'Gagal sinkron'
+      var label = state.syncStatus === 'synced' ? (t('synced') + (state.lastSyncAt ? ' &middot; ' + fmtTime(state.lastSyncAt) : ''))
+        : state.syncStatus === 'syncing' ? t('syncing')
+        : state.syncStatus === 'error' ? t('syncFailed')
         : 'Belum sinkron';
       html += '<div class="sync-status" title="' + esc(state.syncErrorMsg || '') + '"><span class="sync-dot ' + dotClass + '"></span>' + label + '</div>';
       html += '<button class="ghost" id="btn-refresh-sync" title="Tarik data terbaru">' + icon('refresh', { valign: '-3px' }) + '</button>';
@@ -905,7 +1997,8 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     return '<div class="row" style="align-items:flex-start; gap:10px;"><span class="step-num" style="margin-top:1px;">' + num + '</span><span class="small" style="flex:1;">' + text + '</span></div>';
   }
 
-  function renderListView() {
+  // ============ VIEW RENDERING ============
+    function renderListView() {
     var isRoutine = state.activeTab === 'rutin';
     var pool = state.projects.filter(function(p){ return (p.category === 'Rutin') === isRoutine; });
     var filtered = pool.filter(function(p){
@@ -916,9 +2009,9 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     });
 
     var avg = pool.length ? Math.round((pool.reduce(function(s,p){ return s + projectProgress(p); }, 0) / pool.length) * 10) / 10 : 0;
-    var ongoing = pool.filter(function(p){ return p.status === 'Berjalan'; }).length;
-    var done = pool.filter(function(p){ return p.status === 'Selesai'; }).length;
-    var delayed = pool.filter(function(p){ return p.status === 'Tertunda'; }).length;
+    var ongoing = pool.filter(function(p){ return p.status === t('inProgress'); }).length;
+    var done = pool.filter(function(p){ return p.status === t('completed'); }).length;
+    var delayed = pool.filter(function(p){ return p.status === t('onHold'); }).length;
 
     var html = '';
     html += '<div class="topbar">';
@@ -927,32 +2020,35 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     html += '<div class="logo-strip"><img class="logo-perusahaan" src="' + LOGO_PERUSAHAAN + '" alt="Logo perusahaan"><img src="' + LOGO_ENVIRO + '" alt="Logo Enviro"><img src="' + LOGO_KLH + '" alt="Logo KLH"></div>';
     html += renderSyncControls();
     html += '<button class="ghost" id="btn-recap" title="Lihat rekap progress per tahun, termasuk tahun-tahun sebelumnya">' + icon('calendar', { marginRight: 4 }) + 'Rekap Tahunan</button>';
-    html += '<button class="ghost" id="btn-export" title="Unduh seluruh data proyek sebagai file .json untuk dicadangkan atau dipindahkan ke perangkat lain">' + icon('download', { marginRight: 4 }) + 'Export</button>';
-    html += '<button class="ghost" id="btn-import" title="Muat data proyek dari file .json hasil Export sebelumnya">' + icon('upload', { marginRight: 4 }) + 'Import</button>';
+    html += '<details class="more-menu"><summary class="ghost">' + icon('more-horizontal', { marginRight: 4 }) + 'Lainnya<span class="more-menu-caret">' + icon('chevron-down', { size: 14, marginRight: 0 }) + '</span></summary><div class="more-menu-panel">';
+    html += '<button class="ghost" id="btn-export" title="Unduh seluruh data proyek sebagai file .json untuk dicadangkan atau dipindahkan ke perangkat lain">' + icon('download', { marginRight: 4 }) + 'Ekspor</button>';
+    html += '<button class="ghost" id="btn-import" title="Muat data proyek dari file .json hasil Ekspor sebelumnya">' + icon('upload', { marginRight: 4 }) + 'Impor</button>';
     html += '<button class="ghost" id="btn-recover" title="Coba pulihkan proyek yang mungkin tersembunyi akibat error pembacaan data" style="color:var(--text-danger);">' + icon('alert-triangle', { marginRight: 4, size: 14 }) + 'Pulihkan data</button>';
+    html += '</div></details>';
+    html += '<button class="theme-toggle" id="btn-theme" title="Toggle dark mode" aria-pressed="' + (document.documentElement.classList.contains('dark-mode') ? 'true' : 'false') + '"><span class="theme-toggle-track"><span class="theme-toggle-thumb"></span></span><span>' + (document.documentElement.classList.contains('dark-mode') ? 'Light' : 'Dark') + '</span></button>';
     html += '<input type="file" id="file-import" accept="application/json" style="display:none;">';
     html += '<button class="primary" id="btn-new">' + icon('plus', { marginRight: 4 }) + 'Proyek baru</button>';
     html += '</div></div>';
 
     html += '<div class="tabs">';
-    html += '<button class="tab-btn ' + (isRoutine ? 'active' : '') + '" data-tab="rutin">Rutin</button>';
-    html += '<button class="tab-btn ' + (!isRoutine ? 'active' : '') + '" data-tab="nonrutin">Non-rutin</button>';
+    html += '<button class="tab-btn ' + (isRoutine ? 'active' : '') + '" data-tab="rutin">' + t('routine') + '</button>';
+    html += '<button class="tab-btn ' + (!isRoutine ? 'active' : '') + '" data-tab="nonrutin">' + t('nonRoutine') + '</button>';
     html += '</div>';
 
     html += '<div class="metric-grid">';
-    html += metricCard('Total proyek', pool.length);
-    html += metricCard('Sedang berjalan', ongoing);
-    html += metricCard('Selesai', done);
-    html += metricCard('Tertunda', delayed);
-    html += metricCard('Rata-rata progress', avg + '%', true);
+    html += metricCard(t('totalProjects'), pool.length);
+    html += metricCard(t('ongoing'), ongoing);
+    html += metricCard(t('completed'), done);
+    html += metricCard(t('onHold'), delayed);
+    html += metricCard(t('avgProgress'), avg + '%', true);
     html += '</div>';
 
     html += '<div class="filters">';
     if (isRoutine) {
-      html += '<select id="filter-frequency"><option value="Semua">Semua frekuensi</option>' + FREQUENCIES.map(function(f){ return '<option value="'+f.key+'" '+(state.filterFrequency===f.key?'selected':'')+'>'+esc(f.label)+'</option>'; }).join('') + '</select>';
+      html += '<select id="filter-frequency"><option value="Semua">' + t('allFrequencies') + '</option>' + FREQUENCIES().map(function(f){ return '<option value="'+f.key+'" '+(state.filterFrequency===f.key?'selected':'')+'>'+esc(f.label)+'</option>'; }).join('') + '</select>';
     }
-    html += '<select id="filter-status"><option value="Semua">Semua status</option>' + STATUS_OPTIONS.map(function(s){ return '<option value="'+esc(s)+'" '+(state.filterStatus===s?'selected':'')+'>'+esc(s)+'</option>'; }).join('') + '</select>';
-    html += '<select id="filter-aspect"><option value="Semua">Semua aspek</option>' + ASPECT_OPTIONS.map(function(a){ return '<option value="'+esc(a)+'" '+(state.filterAspect===a?'selected':'')+'>'+esc(a)+'</option>'; }).join('') + '</select>';
+    html += '<select id="filter-status"><option value="Semua">' + t('allStatuses') + '</option>' + STATUS_OPTIONS().map(function(s){ return '<option value="'+esc(s)+'" '+(state.filterStatus===s?'selected':'')+'>'+esc(s)+'</option>'; }).join('') + '</select>';
+    html += '<select id="filter-aspect"><option value="Semua">' + t('allAspects') + '</option>' + ASPECT_OPTIONS().map(function(a){ return '<option value="'+esc(a)+'" '+(state.filterAspect===a?'selected':'')+'>'+esc(a)+'</option>'; }).join('') + '</select>';
     html += '<span class="kbd-hint tiny muted"><span class="kbd">&uarr;</span><span class="kbd">&darr;</span>&nbsp;pilih&nbsp;&middot;&nbsp;<span class="kbd">&crarr;</span>&nbsp;buka&nbsp;&middot;&nbsp;<span class="kbd">N</span>&nbsp;baru</span>';
     html += '</div>';
 
@@ -987,7 +2083,7 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     html += '<p style="margin:0; font-weight:500; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + esc(p.name || '(tanpa nama)') + '</p>';
     if (isRoutine) html += '<span class="freq-pill">' + esc(freqLabel(p.frequency)) + '</span>';
     html += '<span class="freq-pill">' + esc(p.aspect || 'Umum') + '</span>';
-    if (isOverdue(p.deadline, progress)) html += '<span class="badge" style="background:var(--bg-danger); color:var(--text-danger);">' + icon('alert-triangle', { size: 11, marginRight: 3 }) + 'Terlambat</span>';
+    if (isOverdue(p.deadline, progress)) html += '<span class="inline-warning" title="Terlambat">' + icon('alert-triangle', { size: 13, marginRight: 4 }) + 'Terlambat</span>';
     html += '</div>';
     html += '<div class="row tiny muted" style="margin-top:4px; flex-wrap:wrap; gap:8px;">';
     if (p.pic) html += '<span>PIC: ' + esc(p.pic) + '</span>';
@@ -997,9 +2093,8 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     html += '</div></div>';
     html += '<span class="badge" style="background:' + sc.bg + '; color:' + sc.text + ';">' + esc(p.status) + '</span>';
     html += '</div>';
-    html += '<div class="row" style="gap:10px;">';
-    html += renderGauge(progress, { size: 'sm' });
-    html += '</div>';
+    var pcol = gaugeColors(progress);
+    html += '<div class="proj-bottom-progress">' + renderGauge(progress, { size: 'sm', readout: false }) + '<span class="proj-progress-label" style="color:' + pcol.c1 + ';">' + progress + '%</span></div>';
     if (p.trackMode === 'tahapan' && wTotal !== 100) {
       html += '<p class="alert">' + icon('alert-triangle', { size: 13, valign: '-2px', marginRight: 4 }) + 'Total bobot tahapan ' + wTotal + '%, seharusnya 100%</p>';
     }
@@ -1020,14 +2115,14 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     html += '<button class="ghost" id="btn-back" style="margin-bottom:1rem;">' + icon('arrow-left', { marginRight: 4 }) + 'Kembali</button>';
 
     html += '<div class="between" style="margin-bottom:1.25rem; flex-wrap:wrap; gap:10px;">';
-    html += '<h1 style="font-size:20px;">Rekap Tahunan</h1>';
+    html += '<h1 style=\"font-size:20px;\">' + t('yearlyRecap') + '</h1>';
     html += '<select id="recap-year" style="font-weight:600;">' + years.map(function(y){ return '<option value="'+y+'" '+(y===state.recapYear?'selected':'')+'>'+y+'</option>'; }).join('') + '</select>';
     html += '</div>';
 
     html += '<div class="metric-grid" style="margin-bottom:1.25rem;">';
-    html += metricCard('Rata-rata progress ' + state.recapYear, recap.avgProgress + '%', true);
+    html += metricCard(t('avgProgress') + ' ' + state.recapYear, recap.avgProgress + '%', true);
     html += metricCard('Proyek tuntas 100%', recap.doneCount + ' dari ' + recap.totalCount);
-    html += metricCard('Total proyek tercatat', recap.totalCount);
+    html += metricCard(t('recordedProjects'), recap.totalCount);
     html += '</div>';
 
     if (!recap.rows.length) {
@@ -1037,8 +2132,8 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
       return html;
     }
 
-    var routineRows = recap.rows.filter(function(r){ return r.project.category === 'Rutin'; });
-    var nonRoutineRows = recap.rows.filter(function(r){ return r.project.category !== 'Rutin'; });
+    var routineRows = recap.rows.filter(function(r){ return r.project.category === t('routine'); });
+    var nonRoutineRows = recap.rows.filter(function(r){ return r.project.category !== t('routine'); });
 
     function recapTable(rows) {
       var t = '<div class="card" style="padding:0; overflow:hidden;">';
@@ -1051,7 +2146,7 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
         t += '</div>';
         t += '<div style="text-align:right; flex-shrink:0;">';
         t += '<p style="margin:0; font-weight:600; font-size:15px;">' + r.progress + '%</p>';
-        t += '<p class="small muted" style="margin:2px 0 0;">' + (r.final ? 'Final' : 'Berjalan, belum diarsipkan') + '</p>';
+        t += '<p class="small muted" style="margin:2px 0 0;">' + (r.final ? 'Final' : t('inProgress') + ', belum diarsipkan') + '</p>';
         t += '</div>';
         t += '</div>';
       });
@@ -1060,11 +2155,11 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     }
 
     if (routineRows.length) {
-      html += '<h3 style="font-size:14px; color:var(--text-secondary); margin:0 0 8px;">Proyek rutin (' + routineRows.length + ')</h3>';
+      html += '<h3 style="font-size:14px; color:var(--text-secondary); margin:0 0 8px;">' + t('routineProjects2') + ' (' + routineRows.length + ')</h3>';
       html += recapTable(routineRows);
     }
     if (nonRoutineRows.length) {
-      html += '<h3 style="font-size:14px; color:var(--text-secondary); margin:' + (routineRows.length ? '20px' : '0') + ' 0 8px;">Proyek non-rutin (' + nonRoutineRows.length + ')</h3>';
+      html += '<h3 style="font-size:14px; color:var(--text-secondary); margin:' + (routineRows.length ? '20px' : '0') + ' 0 8px;">' + t('nonRoutineProjects2') + ' (' + nonRoutineRows.length + ')</h3>';
       html += recapTable(nonRoutineRows);
     }
 
@@ -1081,10 +2176,10 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     var f = state.newForm;
     var html = '';
     html += '<button class="ghost" id="btn-back" style="margin-bottom:1rem;">' + icon('arrow-left', { marginRight: 4 }) + 'Kembali</button>';
-    html += '<h1 style="font-size:20px; margin-bottom:1.25rem;">Proyek baru</h1>';
-    html += '<div style="display:flex; flex-direction:column; gap:14px;">';
+    html += '<h1 style=\"font-size:20px; margin-bottom:1.25rem;\">' + t('newProject') + '</h1>';
+    html += '<div class="new-project-form">';
 
-    html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">Jenis proyek</label>';
+    html += '<section class="wizard-card"><h2>Jenis & Template</h2><div><label class="small muted" style="display:block; margin-bottom:6px;">Jenis proyek</label>';
     html += '<div class="mode-toggle">';
     html += '<div class="mode-card ' + (isRoutine ? 'active' : '') + '" data-routine="1"><strong>Rutin</strong><div class="tiny muted" style="margin-top:2px;">berulang dengan frekuensi tetap</div></div>';
     html += '<div class="mode-card ' + (!isRoutine ? 'active' : '') + '" data-routine="0"><strong>Non-rutin</strong><div class="tiny muted" style="margin-top:2px;">sekali jalan, tidak terjadwal</div></div>';
@@ -1098,24 +2193,25 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     } else {
       html += '<div class="template-card ' + (key==='nonroutine'?'active':'') + '" data-template="nonroutine">' + icon('bolt', { size: 20, valign: '-4px' }) + '<p class="t-title">Mulai kosong</p><p class="t-sub">misal kunjungan pemerintah</p></div>';
     }
-    html += '</div></div>';
+    html += '</div></div></section>';
 
-    html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">Aspek</label>';
-    html += '<select id="new-aspect">' + ASPECT_OPTIONS.map(function(a){ return '<option value="'+esc(a)+'" '+(f.aspect===a?'selected':'')+'>'+esc(a)+'</option>'; }).join('') + '</select></div>';
+    html += '<section class="wizard-card"><h2>Informasi Utama</h2><div><label class="small muted" style="display:block; margin-bottom:6px;">' + t('aspect') + '</label>';
+    html += '<select id="new-aspect">' + ASPECT_OPTIONS().map(function(a){ return '<option value="'+esc(a)+'" '+(f.aspect===a?'selected':'')+'>'+esc(a)+'</option>'; }).join('') + '</select></div>';
 
     html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">Nama proyek</label>';
     html += '<input id="new-name" value="' + esc(f.name) + '" placeholder="' + (isRoutine ? 'misal: Audit CEMS PLTU Unit 1' : 'misal: Kunjungan Dinas LH ke lokasi pabrik') + '"></div>';
 
     if (isRoutine) {
-      html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">Frekuensi</label>';
-      html += '<select id="new-frequency">' + FREQUENCIES.map(function(fr){ return '<option value="'+fr.key+'" '+(f.frequency===fr.key?'selected':'')+'>'+esc(fr.label)+'</option>'; }).join('') + '</select></div>';
+      html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">' + t('frequency') + '</label>';
+      html += '<select id="new-frequency">' + FREQUENCIES().map(function(fr){ return '<option value="'+fr.key+'" '+(f.frequency===fr.key?'selected':'')+'>'+esc(fr.label)+'</option>'; }).join('') + '</select></div>';
 
       if (key !== 'simple_routine') {
         html += '<p class="small muted" style="margin:0;">Progress proyek ini dihitung otomatis dari tahapan, task, dan item yang kamu susun di bawah &mdash; tinggal lanjut isi detail proyek.</p>';
       }
     }
+    html += '</section>';
 
-    html += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">';
+    html += '<section class="wizard-card"><h2>Jadwal & PIC</h2><div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">';
     html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">Tanggal mulai</label><input type="date" id="new-start-date" value="' + esc(f.startDate) + '"></div>';
     html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">Target selesai</label><input type="date" id="new-deadline" value="' + esc(f.deadline) + '"></div>';
     html += '</div>';
@@ -1123,7 +2219,7 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">PIC</label><input id="new-pic" value="' + esc(f.pic) + '" placeholder="nama penanggung jawab"></div>';
 
     html += '<div><label class="small muted" style="display:block; margin-bottom:6px;">Status proyek</label>';
-    html += '<select id="new-status">' + STATUS_OPTIONS.map(function(s){ return '<option value="'+esc(s)+'" '+(f.status===s?'selected':'')+'>'+esc(s)+'</option>'; }).join('') + '</select></div>';
+    html += '<select id="new-status">' + STATUS_OPTIONS().map(function(s){ return '<option value="'+esc(s)+'" '+(f.status===s?'selected':'')+'>'+esc(s)+'</option>'; }).join('') + '</select></div></section>';
 
     if (isRoutine && key === 'simple_routine') {
       html += '<div class="card" style="background:var(--bg-well); border:none; padding:0.75rem 1rem; font-size:13px; color:var(--text-secondary);">Cocok untuk cek harian/bulanan yang tidak perlu tahapan detail &mdash; cukup tandai selesai, lalu mulai siklus berikutnya.</div>';
@@ -1139,7 +2235,7 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     if (!project) return '<p class="muted">Proyek tidak ditemukan.</p>';
     var progress = projectProgress(project);
     var wTotal = totalWeightOf(project);
-    var isRoutine = project.category === 'Rutin';
+    var isRoutine = project.category === t('routine');
     var html = '';
 
     html += '<div class="between" style="margin-bottom:1rem;">';
@@ -1151,7 +2247,7 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
       html += '<div class="row small">';
       html += '<span class="muted">Yakin hapus?</span>';
       html += '<button class="ghost" id="btn-confirm-delete" style="color:var(--text-danger);">Ya, hapus</button>';
-      html += '<button class="ghost" id="btn-cancel-delete">Batal</button>';
+      html += '<button class="ghost" id="btn-cancel-delete">' + t('cancel') + '</button>';
       html += '</div>';
     } else {
       html += '<button class="ghost small" id="btn-ask-delete" style="color:var(--text-danger);">' + icon('trash', { size: 14, valign: '-2px', marginRight: 4 }) + 'Hapus proyek</button>';
@@ -1159,11 +2255,11 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     html += '</div>';
 
     html += '<div style="margin-bottom:1.25rem;">';
-    html += '<input class="name-input-large" id="proj-name" value="' + esc(project.name) + '" placeholder="Nama proyek">';
+    html += '<input class="name-input-large" id="proj-name" value="' + esc(project.name) + '" placeholder=t("projectName")>';
     html += '<div class="meta-row">';
-    html += '<span class="freq-pill" style="align-self:flex-end; margin-bottom:9px;">' + esc(project.category) + (isRoutine ? ' &middot; ' + esc(freqLabel(project.frequency)) : '') + '</span>';
-    html += '<div class="meta-field"><span class="tiny muted">Aspek</span><select id="proj-aspect">' + ASPECT_OPTIONS.map(function(a){ return '<option value="'+esc(a)+'" '+(project.aspect===a?'selected':'')+'>'+esc(a)+'</option>'; }).join('') + '</select></div>';
-    html += '<div class="meta-field"><span class="tiny muted">Status</span><select id="proj-status">' + STATUS_OPTIONS.map(function(s){ return '<option value="'+esc(s)+'" '+(project.status===s?'selected':'')+'>'+esc(s)+'</option>'; }).join('') + '</select></div>';
+    html += '<span class="freq-pill meta-row-pill" style="align-self:flex-end;">' + esc(project.category) + (isRoutine ? ' &middot; ' + esc(freqLabel(project.frequency)) : '') + '</span>';
+    html += '<div class="meta-field"><span class="tiny muted">' + t('aspect') + '</span><select id="proj-aspect">' + ASPECT_OPTIONS().map(function(a){ return '<option value="'+esc(a)+'" '+(project.aspect===a?'selected':'')+'>'+esc(a)+'</option>'; }).join('') + '</select></div>';
+    html += '<div class="meta-field"><span class="tiny muted">' + t('status') + '</span><select id="proj-status">' + STATUS_OPTIONS().map(function(s){ return '<option value="'+esc(s)+'" '+(project.status===s?'selected':'')+'>'+esc(s)+'</option>'; }).join('') + '</select></div>';
     html += '<div class="meta-field"><span class="tiny muted">PIC</span><input id="proj-pic" value="' + esc(project.pic) + '" placeholder="PIC"></div>';
     html += '<div class="meta-field"><span class="tiny muted">Mulai</span><input type="date" id="proj-start-date" value="' + esc((project.cycleStart || '').slice(0,10)) + '"></div>';
     html += '<div class="meta-field"><span class="tiny muted">Target selesai</span><input type="date" id="proj-deadline" value="' + esc(project.deadline) + '"></div>';
@@ -1174,7 +2270,7 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     if (!state.confirmNewCycle) {
       html += '<button class="ghost small" id="btn-ask-new-cycle" style="white-space:nowrap;">Mulai siklus baru</button>';
     } else {
-      html += '<div class="row small" style="white-space:nowrap;"><span class="muted">Reset progress &amp; simpan ke riwayat?</span><button class="ghost" id="btn-confirm-new-cycle" style="color:var(--text-success); font-weight:500;">Ya, mulai baru</button><button class="ghost" id="btn-cancel-new-cycle">Batal</button></div>';
+      html += '<div class="row small" style="white-space:nowrap;"><span class="muted">Reset progress &amp; simpan ke riwayat?</span><button class="ghost" id="btn-confirm-new-cycle" style="color:var(--text-success); font-weight:500;">Ya, mulai baru</button><button class="ghost" id="btn-cancel-new-cycle">' + t('cancel') + '</button></div>';
     }
     html += '</div>';
 
@@ -1220,7 +2316,7 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     html += '</div>';
 
     html += '<div style="margin-top:1.5rem;">';
-    html += '<label class="small muted" style="display:block; margin-bottom:6px;">Catatan</label>';
+    html += '<label class="small muted" style="display:block; margin-bottom:6px;">' + t('notes') + '</label>';
     html += '<textarea id="proj-notes" placeholder="catatan tambahan, kendala, atau konteks untuk laporan">' + esc(project.notes) + '</textarea>';
     html += '</div>';
 
@@ -1235,19 +2331,17 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     html += '<div class="row" style="gap:10px;">';
     html += '<button class="icon-btn" data-toggle-stage="' + stage.id + '" aria-label="' + (expanded ? 'Tutup tahap' : 'Buka tahap') + '">' + icon(expanded ? 'chevron-down' : 'chevron-right') + '</button>';
     html += '<input class="stage-name-input" data-stage-name="' + stage.id + '" value="' + esc(stage.name) + '" style="flex:1; min-width:0;">';
-    if (isOverdue(stage.endDate, progress)) html += '<span class="badge" style="background:var(--bg-danger); color:var(--text-danger); flex-shrink:0;">' + icon('alert-triangle', { size: 10, marginRight: 3 }) + 'Terlambat</span>';
+    html += '<div class="stage-inline-progress">' + renderGauge(progress, { size: 'sm', readout: false }) + '<span class="tiny muted mono">' + progress + '%</span></div>';
+    if (isOverdue(stage.endDate, progress)) html += '<span class="inline-warning" title="Terlambat">' + icon('alert-triangle', { size: 13, marginRight: 4 }) + 'Terlambat</span>';
     html += '<div class="row" style="gap:4px;"><input type="number" min="0" max="100" class="weight-input" data-stage-weight="' + stage.id + '" value="' + stage.weight + '"><span class="small muted">%</span></div>';
     html += '<button class="icon-btn" data-delete-stage="' + stage.id + '" aria-label="Hapus tahap">' + icon('x') + '</button>';
     html += '</div>';
 
     html += '<div class="row" style="gap:20px; margin-top:8px; margin-left:34px; flex-wrap:wrap;">';
-    html += '<div class="row" style="gap:10px;">';
-    html += renderGauge(progress, { size: 'sm', readout: false });
-    html += '<span class="tiny muted mono" style="min-width:90px; text-align:right; flex-shrink:0;">' + doneCount + '/' + stage.tasks.length + ' task &mdash; ' + progress + '%</span>';
-    html += '</div>';
+    html += '<span class="tiny muted mono">' + doneCount + '/' + stage.tasks.length + ' task selesai</span>';
     html += '<div class="row" style="gap:6px; align-items:center; flex-wrap:wrap;">';
     html += '<span class="tiny muted">Mulai</span><input type="date" class="stage-date-input" data-stage-start="' + stage.id + '" value="' + esc(stage.startDate || '') + '">';
-    html += '<span class="tiny muted" style="margin-left:8px;">Selesai</span><input type="date" class="stage-date-input" data-stage-end="' + stage.id + '" value="' + esc(stage.endDate || '') + '">';
+    html += '<span class="tiny muted" style="margin-left:8px;">' + t('completed') + '</span><input type="date" class="stage-date-input" data-stage-end="' + stage.id + '" value="' + esc(stage.endDate || '') + '">';
     html += '</div>';
     html += '</div>';
 
@@ -1305,7 +2399,8 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
   }
 
   // ---------- Event binding ----------
-  function bindEvents() {
+  // ============ EVENT BINDING ============
+    function bindEvents() {
     Array.prototype.forEach.call(document.querySelectorAll('[data-tab]'), function(el){
       el.onclick = function(){ state.activeTab = el.getAttribute('data-tab'); state.filterFrequency = 'Semua'; state.filterStatus = 'Semua'; state.filterAspect = 'Semua'; render(); };
     });
@@ -1373,6 +2468,12 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
     }
     var btnRecover = document.getElementById('btn-recover');
     if (btnRecover) btnRecover.onclick = recoverData;
+    var btnTheme = document.getElementById('btn-theme');
+    if (btnTheme) btnTheme.onclick = function(){
+      document.documentElement.classList.toggle('dark-mode');
+      localStorage.setItem('sipantek-theme', document.documentElement.classList.contains('dark-mode') ? 'dark' : 'light');
+      render();
+    };
     var filterFreq = document.getElementById('filter-frequency');
     if (filterFreq) filterFreq.onchange = function(e){ state.filterFrequency = e.target.value; render(); };
     var filterStat = document.getElementById('filter-status');
@@ -1514,7 +2615,7 @@ var LOGO_KLH = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaX
           });
         });
       }
-      project.status = 'Berjalan';
+      project.status = t('inProgress');
       state.confirmNewCycle = false;
       persist();
     };
